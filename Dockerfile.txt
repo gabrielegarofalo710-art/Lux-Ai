@@ -1,0 +1,18 @@
+# Base Image
+FROM python:3.11-slim
+
+# Imposta la directory di lavoro nel container
+WORKDIR /app
+
+# Copia solo il file delle dipendenze per velocizzare la cache del layer Docker
+COPY requirements.txt .
+
+# Installa le dipendenze
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia i file del progetto (inclusi main.py, worker.py, index.html)
+COPY . .
+
+# Comando per il servizio API (sarà sovrascritto da Railway)
+# Il comando di default serve a Railway per identificare il container
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--bind", "0.0.0.0:8000"]
