@@ -3,25 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lux-Ai - Legal Risk & ROI Dashboard</title>
+    <title>Lux-Ai - Enterprise Legal Risk Dashboard</title>
     <style>
         :root {
-            --primary-color: #004d99; /* Blu scuro professionale */
-            --secondary-color: #f7f9fc; /* Sfondo chiaro */
-            --header-color: #ffffff; /* Sfondo Header */
+            --primary-color: #004d99; /* Blu scuro (simbolo di fiducia) */
+            --secondary-color: #e6f0ff; /* Sfondo chiaro per l'accento */
+            --header-color: #ffffff; 
             --text-color: #333;
-            --success-color: #28a745;
+            --success-color: #17a2b8; /* Blu-ciano per il successo (ROI) */
             --danger-color: #dc3545;
             --warning-color: #ffc107;
             --font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --border-radius: 8px;
         }
 
         body {
             font-family: var(--font-stack);
-            background-color: var(--secondary-color);
+            background-color: #f0f3f8; /* Sfondo generale più neutro */
             color: var(--text-color);
             margin: 0;
-            padding-top: 80px; /* Spazio per l'header fisso */
+            padding-top: 60px;
             display: flex;
             justify-content: center;
         }
@@ -34,7 +35,7 @@
             width: 100%;
             height: 60px;
             background-color: var(--header-color);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             display: flex;
             align-items: center;
             padding: 0 40px;
@@ -42,67 +43,80 @@
         }
 
         .logo {
-            font-size: 1.5em;
-            font-weight: 700;
+            font-size: 1.6em;
+            font-weight: 800;
             color: var(--primary-color);
+            letter-spacing: -0.5px;
         }
 
         .container {
-            max-width: 950px;
+            max-width: 1000px; /* Più largo per un look da dashboard */
             width: 100%;
             margin: 20px auto;
             background: var(--header-color);
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        }
-
-        h1 {
-            color: var(--primary-color);
-            font-weight: 700;
-            margin-bottom: 5px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
         }
         
-        h2 {
-            font-size: 1.4em;
-            font-weight: 600;
-            color: var(--primary-color);
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-            margin-top: 30px;
-        }
-
-        p.subtitle {
-            color: #777;
-            font-size: 1em;
-            margin-top: 5px;
-        }
-
+        h1 { font-weight: 700; font-size: 2em; margin-bottom: 5px; color: var(--text-color); }
+        h2 { font-size: 1.2em; font-weight: 600; color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 30px; }
+        
         .upload-area {
-            border: 2px dashed var(--primary-color);
-            padding: 50px;
+            border: 3px dashed var(--primary-color);
+            padding: 60px;
             text-align: center;
             cursor: pointer;
-            border-radius: 10px;
+            border-radius: var(--border-radius);
             transition: all 0.2s ease-in-out;
             background-color: var(--secondary-color);
         }
 
         .upload-area:hover {
             border-color: #0056b3;
-            background-color: #e6f7ff;
+            background-color: #d8e5ff;
         }
 
         #fileInput { display: none; }
 
         .results-section {
+            display: flex; /* Layout a due colonne per i risultati */
+            gap: 30px;
             margin-top: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background-color: #fcfcfc;
         }
         
+        .results-section > div {
+            flex: 1;
+        }
+        
+        /* Metrica KPI (Key Performance Indicator) - ROI */
+        .kpi-card {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border-left: 5px solid var(--success-color);
+        }
+
+        .kpi-card strong {
+            font-size: 2.5em;
+            color: var(--success-color);
+            display: block;
+            margin-top: 5px;
+            line-height: 1.1;
+        }
+        
+        .status-message {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid #c0d9ff;
+        }
+
         /* Spinner */
         .spinner { 
             border: 4px solid #f3f3f3; 
@@ -115,27 +129,27 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Metrica ROI */
-        .roi-metric {
-            background-color: #d4edda;
-            color: #155724;
-            padding: 18px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            border-left: 5px solid var(--success-color);
+        /* Classi Rischio (Più scure e definite) */
+        .clausola-box { 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: var(--border-radius); 
         }
-        
-        /* Classi Rischio */
-        .clausola-box { padding: 15px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ddd; }
-        .HIGH { background-color: #fff0f0; border: 1px solid var(--danger-color); color: var(--danger-color); }
-        .MEDIUM { background-color: #fffbe6; border: 1px solid var(--warning-color); color: #c08500; }
-        .LOW { background-color: #f0fff0; border: 1px solid var(--success-color); color: var(--success-color); }
+        .HIGH { background-color: #fae6e6; border: 1px solid var(--danger-color); color: var(--danger-color); }
+        .MEDIUM { background-color: #fff4d2; border: 1px solid var(--warning-color); color: #c08500; }
+        .LOW { background-color: #e6f7e6; border: 1px solid #28a745; color: #28a745; }
         .NON-TROVATA { background-color: #f7f7f7; border: 1px solid #999; color: #999; }
         
-        .clausola-box p { margin: 0; }
-        .clausola-box em { display: block; margin-top: 10px; padding: 10px; background-color: rgba(0,0,0,0.03); border-radius: 4px; font-style: normal; color: #444; }
+        .clausola-box em { 
+            display: block; 
+            margin-top: 10px; 
+            padding: 12px; 
+            background-color: rgba(0,0,0,0.05); 
+            border-radius: 4px; 
+            font-style: normal; 
+            color: #444; 
+            border-left: 3px solid #ccc;
+        }
 
         .error { background-color: #fbe6e6; color: var(--danger-color); padding: 15px; border-radius: 4px; font-weight: bold; }
         
@@ -144,33 +158,34 @@
 <body>
 
 <div class="header-fixed">
-    <div class="logo">⚖️ Lux-Ai Dashboard</div>
+    <div class="logo">LUX-AI</div>
+    <div style="margin-left: auto; font-size: 0.9em; color: #666;">Account: Gabriele G. | Stato: Pronto</div>
 </div>
 
 <div class="container">
     <header>
-        <h1>Analisi Contrattuale in 30 secondi</h1>
-        <p class="subtitle">Focus: Rischio Finanziario e ROI su Clausole Critiche.</p>
+        <h1>Risk & Efficiency Analyzer</h1>
+        <p style="color: #666;">Dashboard per la valutazione automatizzata del rischio contrattuale su clausole ad alto impatto (Liability & Indemnification).</p>
     </header>
     
     <div class="upload-section" id="uploadSection">
-        <h2>Carica Documento</h2>
+        <h2>Upload Documento</h2>
         <input type="file" id="fileInput" accept="application/pdf">
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p style="font-size: 1.5em; font-weight: 700; color: var(--primary-color);">DRAG & DROP o CLICCA</p>
-            <p style="font-size: 0.9em; color: #888; margin-top: 15px;">Carica il tuo contratto (Formato PDF nativo richiesto).</p>
-            <p style="font-size: 0.8em; color: #bbb;">(L'analisi asincrona evita il timeout del server.)</p>
+            <p style="font-size: 1.8em; font-weight: 700; color: var(--primary-color);">Invia Contratto PDF</p>
+            <p style="font-size: 1em; color: #666; margin-top: 15px;">La pipeline asincrona elaborerà il documento. Non chiudere la finestra.</p>
         </div>
     </div>
 
-    <div class="results-section" id="statusSection" style="display:none;">
-        <h2>Stato Elaborazione</h2>
+    <div id="statusSection" style="display:none;">
+        <h2 style="margin-top: 30px;">Monitoraggio e Risultati</h2>
         
-        <div id="statusMessage" class="roi-metric">Avvio elaborazione...</div>
+        <div id="statusMessage" class="status-message">In attesa di avvio del Worker...</div>
         
         <div id="spinner" class="spinner"></div>
         
-        <div id="resultOutput" class="result-box" style="display:none;"></div>
+        <div id="resultOutput" class="results-section" style="display:none;">
+            </div>
     </div>
 
 </div>
@@ -190,7 +205,7 @@
         statusSection.style.display = 'block';
         uploadSection.style.display = 'none';
         statusMessage.textContent = message;
-        statusMessage.className = isError ? 'error' : 'roi-metric';
+        statusMessage.className = isError ? 'error' : 'status-message';
         spinner.style.display = isError ? 'none' : 'block';
         resultOutput.style.display = 'none';
     }
@@ -199,7 +214,7 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        showStatus(`Caricamento del file: ${file.name}. Avvio job asincrono...`);
+        showStatus(`Caricamento del file: ${file.name}. Avvio pipeline asincrona...`);
         
         const formData = new FormData();
         formData.append('file', file);
@@ -221,7 +236,7 @@
             
             const jobId = data.job_id;
             
-            showStatus(`Analisi avviata in background (ID: ${jobId}). Attendere il risultato...`);
+            showStatus(`Analisi in coda (Job ID: ${jobId}). Il Worker sta elaborando il documento...`);
 
             // 2. Avvia il polling dello stato del job
             pollInterval = setInterval(() => checkStatus(jobId), 3000); // Controlla ogni 3 secondi
@@ -236,7 +251,7 @@
             const response = await fetch(`/status/${jobId}`);
             const data = await response.json();
 
-            statusMessage.textContent = `Stato: ${data.detail}`;
+            statusMessage.textContent = `Stato attuale: ${data.detail}`;
             
             if (data.status === 'success') {
                 clearInterval(pollInterval);
@@ -254,39 +269,52 @@
     function displayResult(result) {
         const roi = result.risparmio_stimato_eur.toFixed(2);
         const tempo = result.tempo_risparmiato_min;
-        const nome = result.nome_documento || "Contratto Analizzato";
+        const nome = result.nome_documento || "Documento Contratto";
 
-        let outputHTML = `
-            <div class="roi-metric">
-                💰 **ROI Immediato:** Analisi completata in ${tempo} minuti di lavoro manuale risparmiato, pari a <span style="font-size: 1.5em; font-weight: 900;">${roi}€</span>.
+        // Colonna Sinistra (KPI e Riassunto)
+        const summaryHTML = `
+            <div>
+                <div class="kpi-card">
+                    <p style="margin: 0; font-size: 1em; color: #666;">Tempo Manuale Risparmiato (Min)</p>
+                    <strong>${tempo}</strong>
+                </div>
+                <div class="kpi-card">
+                    <p style="margin: 0; font-size: 1em; color: #666;">ROI Stimato (EUR)</p>
+                    <strong>€${roi}</strong>
+                </div>
+
+                <h3 style="color: var(--primary-color); margin-top: 40px;">Riepilogo Rischi</h3>
+                <p style="font-weight: 600; color: #444;">${nome}</p>
+                <p>${result.riassunto_breve}</p>
             </div>
-            
-            <h3 style="color: #333; margin-top: 10px;">Documento: ${nome}</h3>
-            <p style="font-weight: 600;">Riassunto Breve:</p>
-            <p>${result.riassunto_breve}</p>
-            
-            <h4 style="margin-top: 25px; color: var(--primary-color);">DETTAGLIO RISCHI CRITICI</h4>
+        `;
+        
+        // Colonna Destra (Dettaglio Clausole)
+        let detailHTML = `
+            <div>
+                <h2 style="margin-top: 0; padding-top: 0;">Dettaglio Clausole Ad Alto Rischio</h2>
         `;
 
         result.analisi_clausole.forEach(c => {
             const rischioClass = c.rischio.toUpperCase().replace(' ', '-');
-            const testoClausola = c.testo_clausola_esatta || "Clausola non estratta o non trovata nel documento con affidabilità sufficiente.";
+            const testoClausola = c.testo_clausola_esatta || "Clausola non estratta o non trovata nel documento con affidabilità sufficiente. Verificare manualmente.";
 
-            outputHTML += `
+            detailHTML += `
                 <div class="clausola-box ${rischioClass}">
-                    <p style="margin: 0; font-weight: 700;">${c.tipo} &nbsp; | &nbsp; Livello di Rischio: <span style="text-transform: uppercase;">${c.rischio}</span></p>
-                    <hr style="border-color: rgba(0,0,0,0.1); margin: 8px 0;">
-                    <p style="font-size: 0.9em; margin-top: 5px;">**Testo Rilevato:**</p>
-                    <em>${testoClausola}</em>
+                    <p style="margin: 0; font-weight: 700; font-size: 1.1em;">${c.tipo} &nbsp; | &nbsp; Rischio: <span style="text-transform: uppercase;">${c.rischio}</span></p>
+                    <em style="font-size: 0.9em;">${testoClausola}</em>
                 </div>
             `;
         });
-
-        resultOutput.innerHTML = outputHTML;
-        resultOutput.style.display = 'block';
+        
+        detailHTML += `</div>`;
+        
+        resultOutput.innerHTML = summaryHTML + detailHTML;
+        
+        resultOutput.style.display = 'flex';
         statusMessage.style.display = 'none';
         spinner.style.display = 'none';
-        uploadSection.style.display = 'block'; // Mostra di nuovo la sezione upload per nuova analisi
+        uploadSection.style.display = 'block'; // Mostra di nuovo la sezione upload
     }
 </script>
 
