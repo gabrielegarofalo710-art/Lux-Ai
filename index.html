@@ -3,40 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lux-Ai MVP - Analisi Contratto Legale</title>
+    <title>Lux-Ai - Legal Contract ROI Analyzer</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 40px; }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        h1 { color: #007bff; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .upload-section, .results-section { margin-top: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 6px; }
-        #fileInput { display: none; }
-        .upload-area { border: 2px dashed #007bff; padding: 40px; text-align: center; cursor: pointer; border-radius: 4px; transition: border-color 0.3s; }
-        .upload-area:hover { border-color: #0056b3; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #555;
+            --background-color: #f7f9fc;
+            --card-background: #ffffff;
+            --border-color: #e0e0e0;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-stack);
+            background-color: var(--background-color);
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 20px auto;
+            background: var(--card-background);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        h2 {
+            font-weight: 500;
+            color: var(--secondary-color);
+            margin-top: 30px;
+            border-left: 3px solid var(--primary-color);
+            padding-left: 10px;
+        }
+
+        p.subtitle {
+            color: #777;
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+            background-color: #fff;
+        }
+
+        .upload-area:hover {
+            border-color: #0056b3;
+            background-color: #f0f8ff;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .results-section {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fcfcfc;
+        }
+        
+        .spinner { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid var(--primary-color); 
+            border-radius: 50%; 
+            width: 30px; 
+            height: 30px; 
+            animation: spin 1.5s linear infinite; 
+            margin: 20px auto; 
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .result-box { background-color: #e9f7e9; border: 1px solid #d4edda; color: #155724; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
-        .roi-metric { background-color: #d1ecf1; color: #0c5460; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-weight: bold; }
-        .error { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; }
+
+        .roi-metric {
+            background-color: #e6f7ff;
+            color: #0056b3;
+            padding: 18px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .clausola-box { 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 6px; 
+            border: 1px solid #ddd;
+        }
+        
+        /* Classi Rischio */
+        .HIGH { background-color: #fff0f0; border: 1px solid var(--danger-color); color: var(--danger-color); }
+        .MEDIUM { background-color: #fffbe6; border: 1px solid var(--warning-color); color: #c08500; }
+        .LOW { background-color: #f0fff0; border: 1px solid var(--success-color); color: var(--success-color); }
+        .NON-TROVATA { background-color: #f7f7f7; border: 1px solid #999; color: #999; }
+        
+        .clausola-box p { margin: 0; }
+        .clausola-box em { display: block; margin-top: 10px; padding: 10px; background-color: rgba(0,0,0,0.03); border-radius: 4px; font-style: normal; color: #444; }
+
+        .error { background-color: #fbe6e6; color: var(--danger-color); padding: 15px; border-radius: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Lux-Ai MVP: Analisi Contratto Legale</h1>
-    <p>La Fetta di Valore: Analisi automatizzata di Clausole ad Alto Rischio (Limitazione di Responsabilità e Indennizzo).</p>
+    <header>
+        <h1>Lux-Ai</h1>
+        <p class="subtitle">Analisi Contrattuale ad Alto Rischio (MVP)</p>
+    </header>
+    
+    <p style="color: #444; text-align: center; margin-bottom: 30px;">
+        Focalizzati sul **Vertical Slice of Value**: Ottieni un'analisi immediata del **rischio finanziario** nelle clausole di **Responsabilità (Liability)** e **Indennizzo**.
+    </p>
 
     <div class="upload-section" id="uploadSection">
         <input type="file" id="fileInput" accept="application/pdf">
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p>Trascina qui il tuo PDF nativo o clicca per selezionare il file.</p>
-            <p style="font-size: 0.8em; color: #888;">Analizziamo solo PDF nativi, non scansioni.</p>
+            <p style="font-size: 1.2em; font-weight: 600; color: var(--primary-color);">CLICCA QUI per Selezionare il PDF Legale</p>
+            <p style="font-size: 0.9em; color: #888; margin-top: 15px;">Solo PDF nativi, non scansioni. Dimostra l'affidabilità con la massima accuratezza di estrazione del testo.</p>
         </div>
     </div>
 
     <div class="results-section" id="statusSection" style="display:none;">
-        <h2>Stato Analisi</h2>
-        <div id="statusMessage" class="roi-metric">In attesa di caricamento...</div>
+        <h2 style="margin-top: 0;">Monitoraggio Analisi</h2>
+        
+        <div id="statusMessage" class="roi-metric">Avvio elaborazione...</div>
+        
         <div id="spinner" class="spinner"></div>
+        
         <div id="resultOutput" class="result-box" style="display:none;"></div>
     </div>
 
@@ -66,91 +190,95 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        showStatus(`Caricamento del file: ${file.name}...`);
+        showStatus(`Caricamento del file: ${file.name}. Avvio job asincrono...`);
         
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            // 1. Invia il file all'API per avviare il job
+            // 1. Invia il file all'API per avviare il job nel Worker
             const response = await fetch('/analyze', {
                 method: 'POST',
                 body: formData
             });
 
-            if (response.status === 400 || response.status === 500) {
-                const errorData = await response.json();
-                showStatus(`Errore API: ${errorData.detail || 'Errore sconosciuto.'}`, true);
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Cattura errori 400 (PDF illeggibile) o 500 (Worker inattivo)
+                showStatus(`ERRORE: ${data.detail || 'Impossibile connettersi al servizio.'}`, true);
                 return;
             }
-
-            const data = await response.json();
+            
             const jobId = data.job_id;
             
-            showStatus(`Analisi avviata (ID Job: ${jobId}). Attendere...`);
+            showStatus(`Analisi avviata in background (ID: ${jobId}). Attendere il risultato...`);
 
             // 2. Avvia il polling dello stato del job
             pollInterval = setInterval(() => checkStatus(jobId), 3000); // Controlla ogni 3 secondi
 
         } catch (error) {
-            showStatus(`Errore di connessione: Impossibile avviare l'analisi. ${error.message}`, true);
+            showStatus(`Errore di rete: Impossibile contattare il server API. ${error.message}`, true);
         }
     }
 
     async function checkStatus(jobId) {
         try {
-            const response = await fetch(`/status/${jobId}`);
+            const response = await fetch(`/status/${job_id}`);
             const data = await response.json();
 
-            statusMessage.textContent = `Stato: ${data.detail || data.status.toUpperCase()}`;
+            statusMessage.textContent = `Stato: ${data.detail}`;
             
             if (data.status === 'success') {
                 clearInterval(pollInterval);
-                spinner.style.display = 'none';
                 displayResult(data.result);
             } else if (data.status === 'failed') {
                 clearInterval(pollInterval);
-                showStatus(`Analisi fallita: ${data.detail}`, true);
+                showStatus(`Analisi fallita. Dettaglio: ${data.detail}`, true);
             }
 
         } catch (error) {
-            // Ignoriamo errori di connessione temporanei durante il polling
             console.error('Errore durante il polling dello stato:', error);
+            // Non terminare, il server potrebbe essere momentaneamente instabile
         }
     }
 
     function displayResult(result) {
         const roi = result.risparmio_stimato_eur.toFixed(2);
         const tempo = result.tempo_risparmiato_min;
-        const nome = result.nome_documento;
+        const nome = result.nome_documento || "Contratto Analizzato";
 
         let outputHTML = `
-            <p class="roi-metric" style="background-color: #007bff; color: white;">
-                💰 ROI Stimato: Hai risparmiato <span style="font-size: 1.2em;">${roi}€</span> (basato su ${tempo} minuti di revisione manuale).
-            </p>
-            <h3>Documento Analizzato: ${nome}</h3>
-            <h4>Riassunto dei Rischi:</h4>
+            <div class="roi-metric" style="background-color: #d4edda; color: #155724; border-left: 5px solid var(--success-color);">
+                ✅ **RISULTATO ROI IMMEDIATO:** Analisi completata in ${tempo} minuti di lavoro manuale risparmiato, pari a <span style="font-size: 1.5em;">${roi}€</span>.
+            </div>
+            
+            <h3 style="color: #333;">Documento: ${nome}</h3>
+            <p style="font-weight: 600;">Riassunto Breve:</p>
             <p>${result.riassunto_breve}</p>
-            <h4>Dettaglio Clausole Critiche (La Fetta di Valore):</h4>
+            
+            <h4 style="margin-top: 25px;">DETTAGLIO RISCHI CRITICI</h4>
         `;
 
         result.analisi_clausole.forEach(c => {
-            const color = c.rischio === 'HIGH' ? '#f8d7da' : (c.rischio === 'MEDIUM' ? '#fff3cd' : '#d4edda');
-            const textColor = c.rischio === 'HIGH' ? '#721c24' : (c.rischio === 'MEDIUM' ? '#856404' : '#155724');
-            const badgeStyle = `padding: 5px 10px; border-radius: 4px; font-weight: bold; background-color: ${color}; color: ${textColor};`;
+            const rischioClass = c.rischio.toUpperCase().replace(' ', '-');
+            const testoClausola = c.testo_clausola_esatta || "Clausola non estratta o non trovata nel documento con affidabilità sufficiente.";
 
             outputHTML += `
-                <div style="margin-top: 15px; border-left: 5px solid ${textColor}; padding-left: 10px;">
-                    <p style="margin: 0;"><span style="${badgeStyle}">${c.tipo} (${c.rischio})</span></p>
-                    <p style="font-size: 0.9em; margin-top: 5px;">Testo Trovato: <em>${c.testo_clausola_esatta}</em></p>
+                <div class="clausola-box ${rischioClass}">
+                    <p style="margin: 0; font-weight: 700;">${c.tipo} &nbsp; | &nbsp; Livello di Rischio: <span style="text-transform: uppercase;">${c.rischio}</span></p>
+                    <hr style="border-color: rgba(0,0,0,0.1); margin: 8px 0;">
+                    <p style="font-size: 0.9em; margin-top: 5px;">**Testo Rilevato:**</p>
+                    <em>${testoClausola}</em>
                 </div>
             `;
         });
 
         resultOutput.innerHTML = outputHTML;
         resultOutput.style.display = 'block';
-        statusMessage.style.display = 'none'; // Nascondi il messaggio di stato finale
+        statusMessage.style.display = 'none';
         spinner.style.display = 'none';
+        uploadSection.style.display = 'block'; // Mostra di nuovo la sezione upload per nuova analisi
     }
 </script>
 
