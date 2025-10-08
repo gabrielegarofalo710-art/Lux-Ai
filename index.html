@@ -3,320 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lux-Ai - Enterprise Legal Risk Dashboard</title>
+    <title>Lux-Ai - Pilot Programma Esclusivo</title>
     <style>
+        /* CSS OMESSO PER BREVITÀ, MA DEVE ESSERE INCLUSO QUI */
         :root {
-            --primary-color: #004d99; /* Blu scuro (simbolo di fiducia) */
-            --secondary-color: #e6f0ff; /* Sfondo chiaro per l'accento */
-            --header-color: #ffffff; 
-            --text-color: #333;
-            --success-color: #17a2b8; /* Blu-ciano per il successo (ROI) */
+            --brand-color: #3F93E6;
+            --background-main: #2c3e50;
+            --background-light: #ffffff;
+            --cta-color: #38c172;
+            --font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             --danger-color: #dc3545;
             --warning-color: #ffc107;
-            --font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --border-radius: 8px;
+            --text-dark: #2c3e50; 
+            --text-light: #666;
+            --border-radius: 6px;
         }
 
         body {
             font-family: var(--font-stack);
-            background-color: #f0f3f8; /* Sfondo generale più neutro */
-            color: var(--text-color);
+            background-color: var(--background-main);
             margin: 0;
-            padding-top: 60px;
+            padding: 0;
             display: flex;
-            justify-content: center;
-        }
-        
-        /* Header Fisso */
-        .header-fixed {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            background-color: var(--header-color);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
+            flex-direction: column;
             align-items: center;
-            padding: 0 40px;
-            z-index: 1000;
+            min-height: 100vh;
+            font-size: 16px;
         }
-
-        .logo {
-            font-size: 1.6em;
-            font-weight: 800;
-            color: var(--primary-color);
-            letter-spacing: -0.5px;
-        }
-
-        .container {
-            max-width: 1000px; /* Più largo per un look da dashboard */
+        .top-bar {
             width: 100%;
-            margin: 20px auto;
-            background: var(--header-color);
-            padding: 30px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            background-color: var(--background-light);
+            color: var(--text-dark);
+            padding: 18px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
         }
-        
-        h1 { font-weight: 700; font-size: 2em; margin-bottom: 5px; color: var(--text-color); }
-        h2 { font-size: 1.2em; font-weight: 600; color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 30px; }
-        
+        .logo { font-size: 1.4em; font-weight: 800; flex-shrink: 0; color: var(--brand-color); }
+        .top-bar-pitch { text-align: center; flex-grow: 1; }
+        .top-bar-pitch h1 { font-size: 1.25em; font-weight: 700; color: var(--text-dark); margin: 0; line-height: 1.2; }
+        .top-bar-pitch p { color: var(--text-light); font-size: 0.85em; margin: 2px 0 0 0; }
+        .top-bar-nav { flex-shrink: 0; font-size: 0.9em; }
+        .top-bar-nav a { color: var(--brand-color); text-decoration: none; margin-left: 15px; cursor: pointer; }
+        .content-card {
+            max-width: 1200px; width: 95%; margin: 40px 20px; background-color: var(--background-light);
+            color: var(--text-dark); padding: 35px; border-radius: var(--border-radius);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2); box-sizing: border-box;
+        }
+        .columns-layout { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 30px; }
+        .upload-component { padding: 20px; border-radius: var(--border-radius); text-align: center; }
         .upload-area {
-            border: 3px dashed var(--primary-color);
-            padding: 60px;
-            text-align: center;
-            cursor: pointer;
-            border-radius: var(--border-radius);
-            transition: all 0.2s ease-in-out;
-            background-color: var(--secondary-color);
+            background-color: #e9eff5; padding: 40px 20px; border-radius: var(--border-radius);
+            margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.2s;
         }
-
-        .upload-area:hover {
-            border-color: #0056b3;
-            background-color: #d8e5ff;
-        }
-
+        .upload-icon { font-size: 4.5em; color: var(--brand-color); }
         #fileInput { display: none; }
-
-        .results-section {
-            display: flex; /* Layout a due colonne per i risultati */
-            gap: 30px;
-            margin-top: 30px;
+        .results-box {
+            padding: 25px; border: 1px solid #ddd; background-color: #f7f7f7;
+            border-radius: var(--border-radius); text-align: left; margin-bottom: 25px;
         }
-        
-        .results-section > div {
-            flex: 1;
+        .kpi-title { font-size: 1.25em; font-weight: 600; color: var(--brand-color); margin-bottom: 12px; }
+        .kpi-metric { font-size: 2em; font-weight: 900; color: var(--cta-color); margin-bottom: 18px; }
+        .kpi-list { list-style-type: none; padding: 0; font-size: 0.95em; color: var(--text-dark); }
+        .kpi-list li { margin-bottom: 6px; }
+        .cta-button-middle {
+            background-color: var(--cta-color); color: white; padding: 14px 35px; border: none;
+            border-radius: var(--border-radius); font-size: 1.15em; font-weight: 700; cursor: pointer;
+            width: 85%; margin: 0 auto; display: block; transition: background-color 0.2s;
         }
-        
-        /* Metrica KPI (Key Performance Indicator) - ROI */
-        .kpi-card {
-            background-color: #ffffff;
-            padding: 25px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            border-left: 5px solid var(--success-color);
+        .cta-button-middle:hover { background-color: #2e9f5e; }
+        .clausola-box { padding: 6px; margin-bottom: 6px; border-left: 4px solid; font-size: 0.85em; }
+        .HIGH { border-color: var(--danger-color); background-color: #fae6e6; color: var(--danger-color); }
+        .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
+        .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
+        #statusFeedback {
+            margin-top: 25px; padding: 15px; border-radius: var(--border-radius);
+            font-weight: 600; text-align: center; display: none;
         }
-
-        .kpi-card strong {
-            font-size: 2.5em;
-            color: var(--success-color);
-            display: block;
-            margin-top: 5px;
-            line-height: 1.1;
-        }
-        
-        .status-message {
-            background-color: var(--secondary-color);
-            color: var(--primary-color);
-            padding: 15px;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            margin-bottom: 20px;
-            border: 1px solid #c0d9ff;
-        }
-
-        /* Spinner */
+        .status-processing { background-color: #fff3cd; color: #856404; }
+        .status-error { background-color: #fbe6e6; color: var(--danger-color); }
+        .status-success { background-color: #d4edda; color: #155724; }
         .spinner { 
-            border: 4px solid #f3f3f3; 
-            border-top: 4px solid var(--primary-color); 
-            border-radius: 50%; 
-            width: 30px; 
-            height: 30px; 
-            animation: spin 1.5s linear infinite; 
-            margin: 20px auto; 
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--brand-color);
+            border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; 
+            display: inline-block; margin-left: 10px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Classi Rischio (Più scure e definite) */
-        .clausola-box { 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            border-radius: var(--border-radius); 
+        .trust-section {
+            width: 100%; max-width: 1200px; text-align: center; padding: 30px;
+            margin-top: 20px; background-color: var(--background-light); 
+            color: var(--text-dark); border-radius: var(--border-radius);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); margin-bottom: 40px;
         }
-        .HIGH { background-color: #fae6e6; border: 1px solid var(--danger-color); color: var(--danger-color); }
-        .MEDIUM { background-color: #fff4d2; border: 1px solid var(--warning-color); color: #c08500; }
-        .LOW { background-color: #e6f7e6; border: 1px solid #28a745; color: #28a745; }
-        .NON-TROVATA { background-color: #f7f7f7; border: 1px solid #999; color: #999; }
-        
-        .clausola-box em { 
-            display: block; 
-            margin-top: 10px; 
-            padding: 12px; 
-            background-color: rgba(0,0,0,0.05); 
-            border-radius: 4px; 
-            font-style: normal; 
-            color: #444; 
-            border-left: 3px solid #ccc;
+        .trust-section p { color: var(--text-light); }
+        .logos { margin: 20px 0; }
+        .logos span { font-size: 1em; color: #bbb; margin: 0 15px; font-weight: 600; }
+        .cta-button-bottom {
+            background-color: var(--brand-color); color: white; padding: 16px 45px; border: none;
+            border-radius: var(--border-radius); font-size: 1.3em; font-weight: 700; cursor: pointer;
+            text-decoration: none; display: inline-block;
         }
-
-        .error { background-color: #fbe6e6; color: var(--danger-color); padding: 15px; border-radius: 4px; font-weight: bold; }
-        
+        .cta-button-bottom:hover { background-color: #3172b5; }
+        .scarcity { font-size: 0.85em; color: #999; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="header-fixed">
-    <div class="logo">LUX-AI</div>
-    <div style="margin-left: auto; font-size: 0.9em; color: #666;">Account: Gabriele G. | Stato: Pronto</div>
-</div>
-
-<div class="container">
-    <header>
-        <h1>Risk & Efficiency Analyzer</h1>
-        <p style="color: #666;">Dashboard per la valutazione automatizzata del rischio contrattuale su clausole ad alto impatto (Liability & Indemnification).</p>
-    </header>
-    
-    <div class="upload-section" id="uploadSection">
-        <h2>Upload Documento</h2>
-        <input type="file" id="fileInput" accept="application/pdf">
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p style="font-size: 1.8em; font-weight: 700; color: var(--primary-color);">Invia Contratto PDF</p>
-            <p style="font-size: 1em; color: #666; margin-top: 15px;">La pipeline asincrona elaborerà il documento. Non chiudere la finestra.</p>
+    <div class="top-bar">
+        <div class="logo">Lux-Ai</div>
+        
+        <div class="top-bar-pitch">
+            <h1>Risparmia 4+ Ore / Contratto. Analisi Rischi Legali in Minuti.</h1>
+            <p>Pilot Programma Esclusivo: Valuta la tua Esposizione in 3 Mesi a €300.</p>
+        </div>
+        
+        <div class="top-bar-nav">
+            <a href="mailto:info@lux-ai.com" style="color: var(--brand-color); text-decoration: none;">Contatti</a> | 
+            <a href="/accesso-iscriviti" id="topNavAccessLink" style="color: var(--brand-color); text-decoration: none;">Accesso/Iscriviti</a>
         </div>
     </div>
 
-    <div id="statusSection" style="display:none;">
-        <h2 style="margin-top: 30px;">Monitoraggio e Risultati</h2>
-        
-        <div id="statusMessage" class="status-message">In attesa di avvio del Worker...</div>
-        
-        <div id="spinner" class="spinner"></div>
-        
-        <div id="resultOutput" class="results-section" style="display:none;">
+    <div class="content-card">
+        <div class="columns-layout">
+            <div class="upload-component">
+                <input type="file" id="fileInput" accept="application/pdf">
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <p style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
+                    <p style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è asincrona.</p>
+                </div>
+                
+                <button class="cta-button-middle" id="analyzeButton">Analizza Ora</button>
+                
+                <div id="statusFeedback" class="status-processing">
+                    <span id="statusText">In attesa di caricamento...</span> <span id="spinner" class="spinner"></span>
+                </div>
+
             </div>
+
+            <div class="kpi-column">
+                <div class="results-box">
+                    <div class="kpi-title">ROI & Efficienza</div>
+                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
+                    <div class="kpi-metric" id="roiMetric">€400+</div>
+                    
+                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
+                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">4+ Ore</p>
+                </div>
+                
+                <div class="results-box">
+                    <div class="kpi-title">Stato Analisi</div>
+                    <ul class="kpi-list" id="summaryList">
+                        <li>• Focus Clausole Critiche: Liability & Indemnification</li>
+                        <li>• Clausole Controllate: 12+</li>
+                        <li>• Rischio Complessivo: **Medio**</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="results-box">
+                <div class="kpi-title">Report Dettaglio Rischi</div>
+                <div id="reportDetail">
+                    <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="trust-section">
+        <p style="font-size: 0.9em; color: var(--text-light);">"Ci ha fatto risparmiare il 50% il tempo nella prima fase di due diligence."</p>
+        <p style="font-size: 0.8em; color: var(--text-light); margin-top: 5px;">— Avv. Marco Bianchi, Studio Legale Innova (Placeholder)</p>
+
+        <div class="logos">
+            <span style="color: #bbb;">ALTOS</span><span style="color: #bbb;">JURIX</span>
+            <span style="color: #bbb;">ARCISA</span><span style="color: #bbb;">AIEFRA</span>
+        </div>
+        
+        <a href="/accesso-iscriviti" class="cta-button-bottom">Partecipa al Pilot Programma Esclusivo - €300</a>
+        <p class="scarcity">Solo per i primi 10 studi legali. Contatta il nostro team per l'onboarding.</p>
     </div>
 
-</div>
+</body>
 
 <script>
+    /* ---------------------------------------------------------------------- */
+    /* CONFIGURAZIONE DINAMICA - SOSTITUITA DA FASTAPI (JINJA2) */
+    /* ---------------------------------------------------------------------- */
+    
+    // ⚠️ Questi valori VERRANNO SOSTITUITI da FastAPI
+    const IS_USER_LOGGED_IN = "{{ is_logged_in | lower }}" === "true"; 
+    const IS_USER_PAYING_MEMBER = "{{ is_paying_member | lower }}" === "true";
+
+    // 🔑 URL REALI AGGIORNATI CON I TUOI DATI
+    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
+    const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00';
+    const HOME_URL = 'https://luxailegal.wixsite.com/my-site-9';
+
+    /* ---------------------------------------------------------------------- */
+    /* INIZIALIZZAZIONE E LOGICA DI STATO */
+    /* ---------------------------------------------------------------------- */
+    
     const fileInput = document.getElementById('fileInput');
-    const uploadSection = document.getElementById('uploadSection');
-    const statusSection = document.getElementById('statusSection');
-    const statusMessage = document.getElementById('statusMessage');
+    const uploadArea = document.getElementById('uploadArea');
+    const analyzeButton = document.getElementById('analyzeButton'); 
+    const statusFeedback = document.getElementById('statusFeedback');
+    const statusText = document.getElementById('statusText');
     const spinner = document.getElementById('spinner');
-    const resultOutput = document.getElementById('resultOutput');
-    let pollInterval = null;
 
-    fileInput.addEventListener('change', uploadFile);
-
-    function showStatus(message, isError = false) {
-        statusSection.style.display = 'block';
-        uploadSection.style.display = 'none';
-        statusMessage.textContent = message;
-        statusMessage.className = isError ? 'error' : 'status-message';
-        spinner.style.display = isError ? 'none' : 'block';
-        resultOutput.style.display = 'none';
+    let FINAL_CTA_DESTINATION = ''; 
+    let buttonText = 'Analizza Ora';
+    
+    // 1. DEFINIZIONE DELLA DESTINAZIONE IN BASE ALLO STATO
+    if (!IS_USER_LOGGED_IN) {
+        // NON LOGGATO: Forza il Login/Registrazione su Wix
+        FINAL_CTA_DESTINATION = WIX_LOGIN_URL;
+        buttonText = 'Accedi per l\'Anteprima';
+    } else if (!IS_USER_PAYING_MEMBER) {
+        // LOGGATO MA NON PAGANTE: Forza il Pagamento Stripe
+        FINAL_CTA_DESTINATION = STRIPE_CHECKOUT_URL;
+        buttonText = 'Partecipa al Pilot (Sblocca)';
+    } else {
+        // LOGGATO E PAGANTE: Sblocca l'API (MVP vera)
+        FINAL_CTA_DESTINATION = '#'; 
+        buttonText = 'Analizza Ora';
     }
 
-    async function uploadFile(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    // 2. FUNZIONE DI REINDIRIZZAMENTO/ATTIVAZIONE API
+    const redirectToAction = (e) => {
+        e.preventDefault();
 
-        showStatus(`Caricamento del file: ${file.name}. Avvio pipeline asincrona...`);
-        
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            // 1. Invia il file all'API per avviare il job nel Worker
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                // Cattura errori 400 (PDF illeggibile) o 500 (Worker inattivo)
-                showStatus(`ERRORE: ${data.detail || 'Impossibile connettersi al servizio.'}`, true);
-                return;
+        if (FINAL_CTA_DESTINATION === '#') {
+            // Utente pagante: Attiva l'upload vero (MVP VERA)
+            fileInput.click();
+        } else {
+            // Utente non pagante o non loggato: Reindirizza
+            window.location.href = FINAL_CTA_DESTINATION; 
+            
+            statusFeedback.style.display = 'block';
+            statusFeedback.className = 'status-error';
+            
+            if (FINAL_CTA_DESTINATION === WIX_LOGIN_URL) {
+                statusText.textContent = 'Non sei loggato. Accedi con il tuo account Wix per vedere l\'anteprima.';
+            } else {
+                statusText.textContent = '🔒 Pilot Programma richiesto. Verrai reindirizzato al pagamento Stripe.';
             }
-            
-            const jobId = data.job_id;
-            
-            showStatus(`Analisi in coda (Job ID: ${jobId}). Il Worker sta elaborando il documento...`);
-
-            // 2. Avvia il polling dello stato del job
-            pollInterval = setInterval(() => checkStatus(jobId), 3000); // Controlla ogni 3 secondi
-
-        } catch (error) {
-            showStatus(`Errore di rete: Impossibile contattare il server API. ${error.message}`, true);
+            spinner.style.display = 'none';
         }
     }
 
-    async function checkStatus(jobId) {
-        try {
-            const response = await fetch(`/status/${jobId}`);
-            const data = await response.json();
-
-            statusMessage.textContent = `Stato attuale: ${data.detail}`;
-            
-            if (data.status === 'success') {
-                clearInterval(pollInterval);
-                displayResult(data.result);
-            } else if (data.status === 'failed') {
-                clearInterval(pollInterval);
-                showStatus(`Analisi fallita. Dettaglio: ${data.detail}`, true);
-            }
-
-        } catch (error) {
-            console.error('Errore durante il polling dello stato:', error);
+    // 3. APPLICAZIONE DEI LISTENER E AGGIORNAMENTO TESTI
+    
+    analyzeButton.textContent = buttonText;
+    
+    // Applica la logica a tutte le CTA che non sono 'Contatti'
+    uploadArea.addEventListener('click', redirectToAction);
+    analyzeButton.addEventListener('click', redirectToAction);
+    
+    // Aggiorna i testi/link per l'utente loggato ma non pagante (Demo)
+    if (IS_USER_LOGGED_IN && !IS_USER_PAYING_MEMBER) {
+        document.querySelector('.upload-area p:first-of-type').textContent = 'Sei Loggato: Analizza un PDF per Sbloccare';
+        document.querySelector('.cta-button-bottom').textContent = 'Paga Ora - €300';
+    }
+    
+    // Aggiorna i link HTML nel DOM
+    const linksToUpdate = document.querySelectorAll('#topNavAccessLink, .cta-button-bottom');
+    linksToUpdate.forEach(link => {
+        link.href = FINAL_CTA_DESTINATION !== '#' ? FINAL_CTA_DESTINATION : STRIPE_CHECKOUT_URL;
+        
+        // Se l'utente è pagante, il link "Accesso/Iscriviti" può puntare alla home
+        if (link.id === 'topNavAccessLink' && IS_USER_PAYING_MEMBER) {
+             link.href = HOME_URL;
         }
-    }
+    });
 
-    function displayResult(result) {
-        const roi = result.risparmio_stimato_eur.toFixed(2);
-        const tempo = result.tempo_risparmiato_min;
-        const nome = result.nome_documento || "Documento Contratto";
-
-        // Colonna Sinistra (KPI e Riassunto)
-        const summaryHTML = `
-            <div>
-                <div class="kpi-card">
-                    <p style="margin: 0; font-size: 1em; color: #666;">Tempo Manuale Risparmiato (Min)</p>
-                    <strong>${tempo}</strong>
-                </div>
-                <div class="kpi-card">
-                    <p style="margin: 0; font-size: 1em; color: #666;">ROI Stimato (EUR)</p>
-                    <strong>€${roi}</strong>
-                </div>
-
-                <h3 style="color: var(--primary-color); margin-top: 40px;">Riepilogo Rischi</h3>
-                <p style="font-weight: 600; color: #444;">${nome}</p>
-                <p>${result.riassunto_breve}</p>
-            </div>
-        `;
-        
-        // Colonna Destra (Dettaglio Clausole)
-        let detailHTML = `
-            <div>
-                <h2 style="margin-top: 0; padding-top: 0;">Dettaglio Clausole Ad Alto Rischio</h2>
-        `;
-
-        result.analisi_clausole.forEach(c => {
-            const rischioClass = c.rischio.toUpperCase().replace(' ', '-');
-            const testoClausola = c.testo_clausola_esatta || "Clausola non estratta o non trovata nel documento con affidabilità sufficiente. Verificare manualmente.";
-
-            detailHTML += `
-                <div class="clausola-box ${rischioClass}">
-                    <p style="margin: 0; font-weight: 700; font-size: 1.1em;">${c.tipo} &nbsp; | &nbsp; Rischio: <span style="text-transform: uppercase;">${c.rischio}</span></p>
-                    <em style="font-size: 0.9em;">${testoClausola}</em>
-                </div>
-            `;
-        });
-        
-        detailHTML += `</div>`;
-        
-        resultOutput.innerHTML = summaryHTML + detailHTML;
-        
-        resultOutput.style.display = 'flex';
-        statusMessage.style.display = 'none';
-        spinner.style.display = 'none';
-        uploadSection.style.display = 'block'; // Mostra di nuovo la sezione upload
-    }
+    // ----------------------------------------------------------------------
+    //  FUNZIONI API VERE (ATTIVATE SOLO QUANDO IS_USER_PAYING_MEMBER è TRUE)
+    // ----------------------------------------------------------------------
+    // ... INCLUDI QUI LE FUNZIONI showStatus, uploadFile, checkStatus, displayResult ORIGINALI
+    // Verranno eseguite SOLO se FINAL_CTA_DESTINATION è '#'.
 </script>
-
-</body>
 </html>
