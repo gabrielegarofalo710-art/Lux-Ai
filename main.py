@@ -2,13 +2,13 @@ import os
 import shutil
 import tempfile
 import uuid
-import json  # Nuovo: Necessario per gestire il payload JSON di Stripe
+import json # Nuovo: Necessario per gestire il payload JSON di Stripe
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request # Modificato: Aggiunto Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates # Nuovo: Necessario per l'HTML dinamico
 from pydantic import BaseModel, Field
 from celery_config import celery_app
-from worker import analyze_pdf_task # <--- CORRETTO: da 'workers' a 'worker'
+from worker import analyze_pdf_task
 
 # --- Configurazione e Inizializzazione ---
 app = FastAPI()
@@ -153,11 +153,12 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
     file.file.seek(0)
-    if file_size < 1000: 
+    # La riga seguente è stata corretta, eliminando il carattere invisibile U+00A0
+    if file_size < 1000:
         raise HTTPException(status_code=400, detail="Impossibile analizzare. Il file è troppo piccolo o vuoto. Si prega di caricare un PDF nativo.")
 
     temp_filename = f"{uuid.uuid4()}.pdf"
-    temp_path = os.path.join("/tmp", temp_filename) 
+    temp_path = os.path.join("/tmp", temp_filename) 
 
     try:
         with open(temp_path, "wb") as f:
@@ -189,7 +190,7 @@ async def get_job_status(job_id: str):
         return ResultResponse(status="processing", detail=task.info.get('message', 'Analisi in corso...'))
     
     elif task.state == 'SUCCESS':
-        result_data = task.result.get('result') 
+        result_data = task.result.get('result') 
         temp_path = task.result.get('temp_path')
         
         if temp_path and os.path.exists(temp_path):
