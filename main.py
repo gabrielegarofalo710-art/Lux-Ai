@@ -2,10 +2,10 @@ import os
 import shutil
 import tempfile
 import uuid
-import json # Nuovo: Necessario per gestire il payload JSON di Stripe
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request # Modificato: Aggiunto Request
+import json 
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request 
 from fastapi.responses import FileResponse
-from fastapi.templating import Jinja2Templates # Nuovo: Necessario per l'HTML dinamico
+from fastapi.templating import Jinja2Templates 
 from pydantic import BaseModel, Field
 from celery_config import celery_app
 from worker import analyze_pdf_task
@@ -15,7 +15,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory=".") # Imposta la directory del template (la root del progetto)
 
 # --- DATI ESSENZIALI (URL REALI) ---
-# Questi URL sono hardcoded nel JS dell'index.html, ma li teniamo qui per riferimento
 STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00'
 WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'
 HOME_URL = 'https://luxailegal.wixsite.com/my-site-9'
@@ -24,7 +23,6 @@ STRIPE_WEBHOOK_SECRET = "whsec_..." # ⚠️ SOSTITUISCI CON LA TUA VERA CHIAVE 
 
 # --- SIMULAZIONE DATABASE (SOSTITUIRE CON DB REALE) ---
 USERS_DB = {
-    # Usato per test. La chiave deve essere un ID utente unico (es. ID da Wix)
     "user_wix_demo": {"is_logged_in": True, "is_paying_member": False, "email": "test-demo@lux-ai.com"}, 
     "user_wix_paid": {"is_logged_in": True, "is_paying_member": True, "email": "paid-user@lux-ai.com"},
     "ANONIMO": {"is_logged_in": False, "is_paying_member": False, "email": None},
@@ -49,12 +47,7 @@ class StripeEvent(BaseModel):
     id: str
 
 # --- UTILITY: Recupera l'Utente Corrente (SIMULAZIONE SSO) ---
-# In una vera app, questa funzione LEGGERebbe il cookie di sessione di Wix
 def get_current_user_id(request: Request) -> str:
-    # ⚠️ QUI DOVRAI IMPLEMENTARE LA VERA LOGICA DI VERIFICA DEL TOKEN/COOKIE DI WIX SSO
-    # Per ora, simuliamo che l'utente è sempre il demo user se c'è un 'auth_token' fittizio nel cookie
-    
-    # Se la tua app Wix passa un cookie 'auth_token=user_wix_demo', la MVP lo legge:
     auth_token = request.cookies.get("auth_token") 
     
     if auth_token == "paid_token":
@@ -62,7 +55,6 @@ def get_current_user_id(request: Request) -> str:
     if auth_token == "demo_token":
         return "user_wix_demo"
     
-    # Se non c'è il token, è anonimo.
     return "ANONIMO" 
 
 # ----------------------------------------------------------------------------------
@@ -70,61 +62,43 @@ def get_current_user_id(request: Request) -> str:
 # ----------------------------------------------------------------------------------
 
 # --- ROTTA PRINCIPALE: SERVE L'HTML DINAMICO ---
-# Sostituisce la vecchia @app.get("/", response_class=FileResponse)
 @app.get("/")
 async def read_index(request: Request):
     user_id = get_current_user_id(request)
     user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
 
-    # FastAPI inietta i valori nello script JavaScript (index.html)
     return templates.TemplateResponse(
         "index.html", 
         {
             "request": request,
-            # 'lower' è importante perché il JS si aspetta 'true' o 'false' in minuscolo
             "is_logged_in": str(user_data["is_logged_in"]).lower(), 
             "is_paying_member": str(user_data["is_paying_member"]).lower(),
         }
     )
 
 # --- 2. ROTTA CHIRURGICA: WEBHOOK STRIPE (SBLOCCO AUTOMATICO) ---
-# Questo è il punto di arrivo del segnale di pagamento riuscito da Stripe.
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
-    # Sig_header è richiesto per la verifica di sicurezza
     sig_header = request.headers.get('stripe-signature')
     event = None
-
-    # ⚠️ VERA VERIFICA DI SICUREZZA DI STRIPE (DEVE ESSERE FATTA!)
-    # Per ora, la simuliamo per far funzionare il test:
-    # try:
-    #     event = stripe.Webhook.construct_event(
-    #         payload, sig_header, STRIPE_WEBHOOK_SECRET
-    #     )
-    # except Exception as e:
-    #     raise HTTPException(status_code=400, detail=f"Webhook signature error: {e}")
     
     try:
+        # Nota: La vera verifica di sicurezza di Stripe è disabilitata per il test MVP.
         event = json.loads(payload)
     except:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        # Usiamo l'email per identificare l'utente (metodo più semplice)
         customer_email = session.get('customer_details', {}).get('email')
         
         if customer_email:
             user_id = EMAIL_TO_ID.get(customer_email)
             if user_id and user_id in USERS_DB:
-                # 3. AGGIORNAMENTO CHIRURGICO DELLO STATO NEL DB (Simulato)
                 USERS_DB[user_id]["is_paying_member"] = True
                 print(f"✅ SBLOCCO AVVENUTO: L'utente {user_id} ({customer_email}) è ora MEMBRO PAGANTE.")
-                # Dopo l'aggiornamento, l'utente vedrà la MVP vera alla prossima ricarica!
             else:
-                 # Questo è un caso critico: l'email non corrisponde a un utente registrato in Wix.
                  print(f"ATTENZIONE: Pagamento ricevuto per email sconosciuta: {customer_email}")
 
     return {"status": "success"}
@@ -142,18 +116,15 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
     user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
     
     if not user_data["is_paying_member"]:
-        # Se l'utente non è pagante, blocca la chiamata API vera
         raise HTTPException(status_code=403, detail="Accesso negato. Solo i membri del Pilot Programma possono avviare l'analisi.")
 
-    # Il resto del tuo codice originale rimane INALTERATO, perché l'utente è PAGANTE.
-    
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Il file deve essere un PDF (application/pdf).")
     
     file.file.seek(0, os.SEEK_END)
     file_size = file.file.tell()
     file.file.seek(0)
-    # La riga seguente è stata corretta, eliminando il carattere invisibile U+00A0
+    
     if file_size < 1000:
         raise HTTPException(status_code=400, detail="Impossibile analizzare. Il file è troppo piccolo o vuoto. Si prega di caricare un PDF nativo.")
 
@@ -170,7 +141,6 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
         file.file.close()
 
     try:
-        # Passa l'ID dell'utente al worker per tracciabilità (opzionale)
         task = analyze_pdf_task.delay(temp_path, user_id) 
         return JobResponse(job_id=task.id)
     except Exception as e:
@@ -181,7 +151,6 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
 
 
 # --- 2. ROTTA: Controlla lo Stato del Job ---
-# Questa rotta non richiede modifiche di Paywall, ma deve essere accessibile solo se un job ID è noto.
 @app.get("/status/{job_id}", response_model=ResultResponse)
 async def get_job_status(job_id: str):
     task = celery_app.AsyncResult(job_id)
@@ -193,6 +162,7 @@ async def get_job_status(job_id: str):
         result_data = task.result.get('result') 
         temp_path = task.result.get('temp_path')
         
+        # Pulizia del file PDF temporaneo subito dopo il recupero del risultato
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
             

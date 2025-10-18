@@ -199,12 +199,12 @@
     const IS_USER_PAYING_MEMBER = "{{ is_paying_member | lower }}" === "true";
 
     // 🔑 URL REALI AGGIORNATI CON I TUOI DATI
-    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
-    const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00';
-    const HOME_URL = 'https://luxailegal.wixsite.com/my-site-9';
+    const WIX_LOGIN_URL = '[https://luxailegal.wixsite.com/my-site-9](https://luxailegal.wixsite.com/my-site-9)'; 
+    const STRIPE_CHECKOUT_URL = '[https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00](https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00)';
+    const HOME_URL = '[https://luxailegal.wixsite.com/my-site-9](https://luxailegal.wixsite.com/my-site-9)';
 
     /* ---------------------------------------------------------------------- */
-    /* INIZIALIZZAZIONE E LOGICA DI STATO */
+    /* ELEMENTI DEL DOM */
     /* ---------------------------------------------------------------------- */
     
     const fileInput = document.getElementById('fileInput');
@@ -213,6 +213,12 @@
     const statusFeedback = document.getElementById('statusFeedback');
     const statusText = document.getElementById('statusText');
     const spinner = document.getElementById('spinner');
+
+    const roiMetric = document.getElementById('roiMetric');
+    const timeMetric = document.getElementById('timeMetric');
+    const summaryList = document.getElementById('summaryList');
+    const reportDetail = document.getElementById('reportDetail');
+
 
     let FINAL_CTA_DESTINATION = ''; 
     let buttonText = 'Analizza Ora';
@@ -229,11 +235,129 @@
     } else {
         // LOGGATO E PAGANTE: Sblocca l'API (MVP vera)
         FINAL_CTA_DESTINATION = '#'; 
-        buttonText = 'Analizza Ora';
+        buttonText = 'Seleziona PDF'; // Cambiato per dare l'idea di selezionare il file
+    }
+    
+    // Aggiorna il testo iniziale del pulsante
+    analyzeButton.textContent = buttonText;
+
+    // ----------------------------------------------------------------------
+    //  FUNZIONI DI STATO E UTILITY
+    // ----------------------------------------------------------------------
+
+    function showStatus(message, type = 'processing', showSpinner = true) {
+        statusFeedback.style.display = 'block';
+        statusText.textContent = message;
+        statusFeedback.className = `status-${type}`;
+        spinner.style.display = showSpinner ? 'inline-block' : 'none';
+        
+        // Pulizia dei risultati precedenti
+        if (type !== 'processing') {
+             roiMetric.textContent = '---';
+             timeMetric.textContent = '---';
+             summaryList.innerHTML = '';
+             reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
+        }
     }
 
-    // 2. FUNZIONE DI REINDIRIZZAMENTO/ATTIVAZIONE API
-    const redirectToAction = (e) => {
+    function displayResult(result) {
+        const { nome_documento, risparmio_stimato_eur, tempo_risparmiato_min, analisi_clausole, riassunto_breve } = result;
+
+        // KPI Column
+        roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
+        timeMetric.textContent = `${tempo_risparmiato_min} Minuti`;
+
+        summaryList.innerHTML = `
+            <li>• Documento: ${nome_documento.substring(0, 30)}...</li>
+            <li>• Focus Clausole Critiche: ${analisi_clausole.length}</li>
+            <li>• Riassunto Rischio: **${riassunto_breve}**</li>
+        `;
+
+        // Report Detail Column
+        reportDetail.innerHTML = `
+            <p class="kpi-title" style="margin-top: 0;">Mappa dei Rischi (Focus M&A)</p>
+            ${analisi_clausole.map(clausola => `
+                <div class="clausola-box ${clausola.rischio}">
+                    <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
+                    ${clausola.testo_clausola_esatta.substring(0, 100)}...
+                </div>
+            `).join('')}
+            <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">*Clicca per la versione completa.</p>
+        `;
+
+        showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
+    }
+    
+    // ----------------------------------------------------------------------
+    //  LOGICA ASINCRONA
+    // ----------------------------------------------------------------------
+
+    async function checkStatus(jobId) {
+        const url = `/status/${jobId}`;
+        let attempts = 0;
+        const maxAttempts = 20; // Circa 10 secondi totali (20 * 500ms)
+
+        const check = setInterval(async () => {
+            if (attempts >= maxAttempts) {
+                clearInterval(check);
+                showStatus('Timeout. L\'analisi è troppo lunga o il worker è inattivo. Riprova più tardi.', 'error', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                showStatus(data.detail || 'Analisi in corso...', 'processing', true);
+                
+                if (data.status === 'success') {
+                    clearInterval(check);
+                    displayResult(data.result);
+                } else if (data.status === 'failed') {
+                    clearInterval(check);
+                    showStatus(`Analisi fallita: ${data.detail}`, 'error', false);
+                }
+                
+            } catch (error) {
+                clearInterval(check);
+                showStatus('Errore di connessione al servizio: impossibile controllare lo stato.', 'error', false);
+            }
+            
+            attempts++;
+        }, 500); // Controlla ogni mezzo secondo
+    }
+    
+    async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        showStatus('Caricamento del file in corso...');
+
+        try {
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                showStatus(`Job ID ${data.job_id}: Analisi avviata. Attendere...`, 'processing', true);
+                checkStatus(data.job_id);
+            } else {
+                showStatus(`Errore ${response.status}: ${data.detail || 'Impossibile avviare l\'analisi.'}`, 'error', false);
+            }
+        } catch (error) {
+            showStatus(`Errore di rete: ${error.message}`, 'error', false);
+        }
+    }
+
+
+    // ----------------------------------------------------------------------
+    //  3. APPLICAZIONE DEI LISTENER E LOGICA MVP
+    // ----------------------------------------------------------------------
+    
+    const ctaAction = (e) => {
         e.preventDefault();
 
         if (FINAL_CTA_DESTINATION === '#') {
@@ -242,27 +366,24 @@
         } else {
             // Utente non pagante o non loggato: Reindirizza
             window.location.href = FINAL_CTA_DESTINATION; 
-            
-            statusFeedback.style.display = 'block';
-            statusFeedback.className = 'status-error';
-            
-            if (FINAL_CTA_DESTINATION === WIX_LOGIN_URL) {
-                statusText.textContent = 'Non sei loggato. Accedi con il tuo account Wix per vedere l\'anteprima.';
-            } else {
-                statusText.textContent = '🔒 Pilot Programma richiesto. Verrai reindirizzato al pagamento Stripe.';
-            }
-            spinner.style.display = 'none';
         }
     }
 
-    // 3. APPLICAZIONE DEI LISTENER E AGGIORNAMENTO TESTI
+    // Listener per i reindirizzamenti/azioni:
+    uploadArea.addEventListener('click', ctaAction);
+    analyzeButton.addEventListener('click', ctaAction);
     
-    analyzeButton.textContent = buttonText;
-    
-    // Applica la logica a tutte le CTA che non sono 'Contatti'
-    uploadArea.addEventListener('click', redirectToAction);
-    analyzeButton.addEventListener('click', redirectToAction);
-    
+    // Listener per l'upload effettivo del file (solo se l'utente è pagante e ha cliccato sul fileInput)
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && IS_USER_PAYING_MEMBER) {
+            uploadFile(file);
+        } else if (file) {
+             // In teoria non dovrebbe mai succedere, la ctaAction blocca l'accesso al fileInput
+             showStatus('Accesso negato. Riprova o sblocca il servizio.', 'error', false);
+        }
+    });
+
     // Aggiorna i testi/link per l'utente loggato ma non pagante (Demo)
     if (IS_USER_LOGGED_IN && !IS_USER_PAYING_MEMBER) {
         document.querySelector('.upload-area p:first-of-type').textContent = 'Sei Loggato: Analizza un PDF per Sbloccare';
@@ -276,14 +397,8 @@
         
         // Se l'utente è pagante, il link "Accesso/Iscriviti" può puntare alla home
         if (link.id === 'topNavAccessLink' && IS_USER_PAYING_MEMBER) {
-             link.href = HOME_URL;
+            link.href = HOME_URL;
         }
     });
-
-    // ----------------------------------------------------------------------
-    //  FUNZIONI API VERE (ATTIVATE SOLO QUANDO IS_USER_PAYING_MEMBER è TRUE)
-    // ----------------------------------------------------------------------
-    // ... INCLUDI QUI LE FUNZIONI showStatus, uploadFile, checkStatus, displayResult ORIGINALI
-    // Verranno eseguite SOLO se FINAL_CTA_DESTINATION è '#'.
 </script>
 </html>

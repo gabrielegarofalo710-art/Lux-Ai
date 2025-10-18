@@ -1,24 +1,28 @@
 import os
 import json
 import google.generativeai as genai
+import time 
 from celery_config import celery_app
 
 # --- Funzione Helper per l'Inizializzazione Gemini ---
+# Legge la chiave dall'ambiente (che Render inietterà)
 def get_gemini_client():
-    api_key = os.getenv("GEMINI_API_KEY")
+    # Usiamo GEMINI_API_KEY come variabile d'ambiente standard
+    api_key = os.getenv("GEMINI_API_KEY") 
+    
+    # Se la chiave non è stata trovata, solleviamo un errore che bloccherà il worker
     if not api_key:
-        # Non solleviamo HTTP error, ma un errore standard per Celery
         raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
     
+    # Inizializzazione della configurazione Gemini
     genai.configure(api_key=api_key)
     return genai.client.Client()
 
 # --- TASK CELERY: Analisi PDF ---
 @celery_app.task(bind=True)
-def analyze_pdf_task(self, temp_path: str):
+def analyze_pdf_task(self, temp_path: str, user_id: str):
     """
-    Esegue l'analisi PDF pesante in background.
-    temp_path: Il percorso locale del file PDF da analizzare.
+    Esegue l'analisi PDF pesante in background, carica il file su Gemini e pulisce.
     """
     client = None
     uploaded_file = None
@@ -29,9 +33,11 @@ def analyze_pdf_task(self, temp_path: str):
 
         # 2. Carica il file su Gemini
         self.update_state(state='STARTED', meta={'progress': 20, 'message': 'Caricamento file AI...'})
+        
+        # Caricamento effettivo del file su Google AI
         uploaded_file = client.files.upload(file=temp_path)
 
-        # 3. Prompt focalizzato sul ROI e Rischio
+        # 3. Prompt focalizzato sul ROI e Rischio (MVP: solo 2 clausole)
         prompt = """
             Analizza questo documento PDF concentrandoti SOLO su due aree critiche ad alto rischio e alta frequenza:
             1. Clausole di Limitazione di Responsabilità (Liability Caps).
@@ -39,7 +45,7 @@ def analyze_pdf_task(self, temp_path: str):
 
             Estrai i risultati in formato JSON. Per il ROI, assumi che l'avvocato medio risparmi 15 minuti di revisione per queste clausole.
             
-            Rispondi SOLO con il blocco di codice JSON con la seguente struttura:
+            Rispondi SOLO con il blocco di codice JSON con la seguente struttura. Se una clausola non è trovata, usa "NON TROVATA" per il rischio e "" per il testo.
             {
                 "nome_documento": "...",
                 "risparmio_stimato_eur": 60.00, 
@@ -74,18 +80,20 @@ def analyze_pdf_task(self, temp_path: str):
         # 5. Tentativo di Decodifica e Restituzione
         json_result = json.loads(output_text)
 
-        # Restituisce il risultato e il path del file (per la pulizia nel main.py)
+        # Restituisce il risultato e il path del file locale (per la pulizia in main.py)
         return {"result": json_result, "temp_path": temp_path}
 
     except Exception as e:
-        # Cattura qualsiasi errore e lo logga
         print(f"WORKER FATAL ERROR: {e}")
+        # Pulisci subito il file Gemini in caso di fallimento
+        if uploaded_file and client:
+             # Assicurati che l'oggetto client sia valido prima di chiamare delete
+             try:
+                 client.files.delete(name=uploaded_file.name)
+             except Exception as cleanup_e:
+                 print(f"Cleanup Error on Gemini: {cleanup_e}")
+
         # Rilancia l'errore per segnalare il fallimento a Celery
         raise e
     
-    finally:
-        # 6. Pulizia del file su Gemini (essenziale)
-        if uploaded_file:
-            client.files.delete(name=uploaded_file.name)
-        
-        # NOTA: La pulizia del file locale (temp_path) è gestita nella rotta /status
+    # Pulizia locale del file PDF è gestita nella rotta /status del main.py
