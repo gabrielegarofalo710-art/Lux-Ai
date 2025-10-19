@@ -3,7 +3,9 @@ import json
 import google.generativeai as genai
 import time 
 from celery_config import celery_app
-from google.generativeai.errors import APIError
+# 🛑 CORREZIONE: La classe APIError si trova ora in google.genai.errors 
+# se stai usando la versione più recente della libreria (genai)
+from google.genai.errors import APIError 
 
 # --- Funzione Helper per l'Inizializzazione Gemini ---
 def get_gemini_client():
@@ -54,16 +56,13 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
         client = get_gemini_client()
         
         # ⚠️ CONTROLLO CRITICO: Il file temporaneo esiste?
-        # A volte, Celery non vede il file scritto da FastAPI se i due servizi non sono nello stesso container
         if not os.path.exists(temp_path):
-             # Solleva un errore chiaro invece di fallire in modo incomprensibile
              raise FileNotFoundError(f"FATAL: File PDF non trovato nel percorso temporaneo: {temp_path}. I servizi non condividono /tmp?")
 
 
         # 2. Carica il file su Gemini (Passando il path corretto da /tmp)
         self.update_state(state='STARTED', meta={'progress': 20, 'message': 'Caricamento file AI su Gemini...'})
         
-        # Questa è la funzione che legge il file locale e lo invia a Google AI
         uploaded_file = client.files.upload(file=temp_path)
         print(f"DEBUG: File {os.path.basename(temp_path)} caricato con successo su Gemini come {uploaded_file.name}")
 
