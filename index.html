@@ -166,9 +166,17 @@
 
 <script>
     /* ---------------------------------------------------------------------- */
-    /* ELEMENTI DEL DOM */
+    /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
+    // VARIABILI D'ACCESSO (Queste sono iniettate da Jinja2 nel main.py)
+    // Se il tuo main.py invia 'true' o 'false', questa riga lo cattura.
+    // Ho rimosso l'iniezione Jinja per semplicità di copia/incolla, ma
+    // ASSUMIAMO che il tuo main.py inietti la variabile per l'accesso.
+    // L'endpoint /analyze richiede il login, quindi forziamo il redirect se non loggato.
+    const IS_USER_LOGGED_IN = "{{ is_logged_in | lower }}" === "true"; 
+    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
+
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
     const analyzeButton = document.getElementById('analyzeButton'); 
@@ -181,14 +189,12 @@
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    // Testo del bottone già impostato su 'Carica il tuo file' nell'HTML,
-    // ma manteniamo qui per chiarezza che questa è l'azione.
-    const BUTTON_TEXT = 'Carica il tuo file';
-    analyzeButton.textContent = BUTTON_TEXT;
+    // Imposta il testo del bottone in base allo stato di accesso.
+    analyzeButton.textContent = IS_USER_LOGGED_IN ? 'Carica il tuo file' : 'Accedi per l\'anteprima';
 
 
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E UTILITY (MANTENUTE)
+    // FUNZIONI DI STATO E RISULTATI
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
@@ -203,13 +209,13 @@
             spinner.style.display = 'none';
         }
         
-        // Pulisce i risultati se non è un successo (es. caricamento o errore)
+        // Reset risultati statici se non è un successo
         if (type !== 'success') {
-             roiMetric.textContent = '€400+'; // Reset ai valori iniziali
-             timeMetric.textContent = '4+ Ore'; // Reset ai valori iniziali
+             roiMetric.textContent = '€400+'; 
+             timeMetric.textContent = '4+ Ore'; 
              summaryList.innerHTML = `
                 <li>• Focus Clausole Critiche: Liability & Indemnification</li>
-                <li>• Clausole Controllate: 12+</li>
+                <li>• Clausole Controllate: 2 (MVP)</li>
                 <li>• Rischio Complessivo: **Medio**</li>
              `;
              reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
@@ -217,52 +223,127 @@
     }
 
     function displayResult(result) {
-        // Logica per mostrare i risultati dopo l'analisi (simulata dall'AI/Gemini)
+        // Logica per mostrare i risultati REALI di Gemini
         const { nome_documento, risparmio_stimato_eur, tempo_risparmiato_min, analisi_clausole, riassunto_breve } = result;
-
+        
+        // Calcola il rischio complessivo per lo status
+        const risks = analisi_clausole.map(c => c.rischio).filter(r => r !== 'NON TROVATA');
+        let riskSummary = 'LOW';
+        if (risks.includes('HIGH')) { riskSummary = 'ALTO'; }
+        else if (risks.includes('MEDIUM')) { riskSummary = 'MEDIO'; }
+        
         // KPI Column
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
         timeMetric.textContent = `${tempo_risparmiato_min} Minuti`;
 
         summaryList.innerHTML = `
             <li>• Documento: ${nome_documento.substring(0, 30)}...</li>
-            <li>• Focus Clausole Critiche: ${analisi_clausole.length}</li>
-            <li>• Riassunto Rischio: **${riassunto_breve}**</li>
+            <li>• Clausole Controllate: ${analisi_clausole.length}</li>
+            <li>• Riassunto Rischio: **${riskSummary}**</li>
         `;
 
         // Report Detail Column
         reportDetail.innerHTML = `
-            <p class="kpi-title" style="margin-top: 0;">Mappa dei Rischi (Focus M&A)</p>
+            <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
             ${analisi_clausole.map(clausola => `
                 <div class="clausola-box ${clausola.rischio}">
                     <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
-                    ${clausola.testo_clausola_esatta.substring(0, 100)}...
+                    ${clausola.rischio === 'NON TROVATA' ? 'Clausola non trovata nel documento.' : clausola.testo_clausola_esatta.substring(0, 100) + '...'}
                 </div>
             `).join('')}
-            <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">*Clicca per la versione completa.</p>
+            <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">${riassunto_breve}</p>
         `;
 
         showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
     }
     
     // ----------------------------------------------------------------------
-    // LOGICA ASINCRONA DI ANALISI SIMULATA/API (DA IMPLEMENTARE)
+    // LOGICA ASINCRONA REALE (FastAPI + Celery)
     // ----------------------------------------------------------------------
     
-    // Funzioni checkStatus e uploadFile devono essere implementate sul backend FastAPi,
-    // ma simulano il caricamento e l'analisi.
+    async function checkStatus(jobId) {
+        const url = `/status/${jobId}`;
+        let attempts = 0;
+        const maxAttempts = 120; // 60 secondi totali (120 * 500ms)
 
-    async function checkStatus(jobId) { /* ... logica di polling del backend ... */ }
-    async function uploadFile(file) { /* ... logica di upload del backend ... */ }
+        const check = setInterval(async () => {
+            if (attempts >= maxAttempts) {
+                clearInterval(check);
+                showStatus('Timeout. L\'analisi è troppo lunga o il servizio worker è inattivo.', 'error', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Aggiorna lo stato usando i messaggi dal worker Celery (data.detail)
+                const currentMessage = data.detail || 'Analisi in corso...';
+                
+                if (data.status === 'SUCCESS') {
+                    clearInterval(check);
+                    displayResult(data.result);
+                } else if (data.status === 'FAILURE' || data.status === 'REVOKED') {
+                    clearInterval(check);
+                    showStatus(`Analisi fallita: ${data.detail || 'Errore generico.'}`, 'error', false);
+                } else {
+                    // PENDING o STARTED
+                    showStatus(currentMessage, 'processing', true);
+                }
+                
+            } catch (error) {
+                clearInterval(check);
+                showStatus('Errore di connessione. Controlla il servizio Render.', 'error', false);
+            }
+            
+            attempts++;
+        }, 500); 
+    }
+    
+    async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file); 
+        
+        showStatus('Caricamento del file in corso...', 'processing', true);
+
+        try {
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.job_id) {
+                // Inizia il polling usando il job_id restituito da FastAPI
+                checkStatus(data.job_id);
+            } else {
+                // Gestisce l'errore 403 (Non loggato) o 400 (Formato file errato) dal tuo main.py
+                showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
+            }
+        } catch (error) {
+            showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
+        }
+    }
+
 
     // ----------------------------------------------------------------------
-    // 3. APPLICAZIONE DEI LISTENER (ACCESSIBILE A TUTTI)
+    // GESTORE DI EVENTI PRINCIPALE (Azione CTA: Login o Upload)
     // ----------------------------------------------------------------------
     
     const ctaAction = (e) => {
         e.preventDefault();
-        // L'azione per tutti è aprire il file selector
-        fileInput.click();
+
+        // **NOTA BENE:** Il tuo main.py sta bloccando gli utenti NON loggati con 403.
+        // Se la variabile IS_USER_LOGGED_IN non è iniettata correttamente da Jinja2,
+        // questo blocco non funzionerà a dovere.
+        if (IS_USER_LOGGED_IN) {
+            // Utente loggato: Avvia l'upload
+            fileInput.click();
+        } else {
+            // Utente NON loggato: Reindirizza al login
+            window.location.href = WIX_LOGIN_URL; 
+        }
     }
 
     // Listener per l'attivazione della finestra di selezione del PDF
@@ -273,28 +354,12 @@
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Qui si attiverebbe la funzione reale di uploadFile(file);
-            
-            // SIMULAZIONE: Mostra il messaggio di caricamento
-            showStatus('Caricamento del file in corso...', 'processing', true);
-
-            // SIMULAZIONE: Dopo 3 secondi, mostra i risultati simulati
-            setTimeout(() => {
-                const simulatedResult = {
-                    nome_documento: file.name,
-                    risparmio_stimato_eur: 450.00,
-                    tempo_risparmiato_min: 2,
-                    riassunto_breve: 'Alto (4 clausole critiche)',
-                    analisi_clausole: [
-                        { tipo: 'Indemnification (Copertura)', rischio: 'HIGH', testo_clausola_esatta: 'Il Venditore indennizzerà l\'Acquirente solo per perdite che superano €50.000.' },
-                        { tipo: 'Limitazione di Responsabilità', rischio: 'MEDIUM', testo_clausola_esatta: 'La responsabilità del Fornitore non potrà superare il canone annuale del servizio.' },
-                        { tipo: 'Terminazione (Notice Period)', rischio: 'LOW', testo_clausola_esatta: 'Entrambe le parti possono recedere con un preavviso di 60 giorni.' },
-                        { tipo: 'Non-Concorrenza', rischio: 'HIGH', testo_clausola_esatta: 'Il venditore non può operare nello stesso settore per 5 anni in Europa.' }
-                    ]
-                };
-                displayResult(simulatedResult);
-            }, 3000); 
-
+            if (IS_USER_LOGGED_IN) {
+                uploadFile(file); // 👈 AZIONE REALE CON IL BACKEND
+            } else {
+                // Fallback nel caso in cui il bottone non abbia reindirizzato
+                showStatus('Accesso richiesto. Clicca il bottone per accedere.', 'error', false);
+            }
         }
     });
 
