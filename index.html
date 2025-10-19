@@ -1,531 +1,1031 @@
 <!DOCTYPE html>
+
 <html lang="it">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Lux-Ai - Analisi Rischi Legali (MVP Accessibile)</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
     <style>
+
         :root {
+
             --brand-color: #3F93E6;
+
             --background-main: #2c3e50;
+
             --background-light: #ffffff;
+
             --cta-color: #38c172;
+
             --font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
             --danger-color: #dc3545;
+
             --warning-color: #ffc107;
+
             --text-dark: #2c3e50;
+
             --text-light: #666;
+
             --border-radius: 6px;
+
         }
+
+
 
         body {
-            font-family: var(--font-stack);
-            background-color: var(--background-main);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            font-size: 16px;
-        }
-        .top-bar {
-            width: 100%; background-color: var(--background-light); color: var(--text-dark);
-            padding: 18px 50px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1); box-sizing: border-box;
-        }
-        .logo { font-size: 1.4em; font-weight: 800; flex-shrink: 0; color: var(--brand-color); }
-        .top-bar-pitch { text-align: center; flex-grow: 1; }
-        .top-bar-pitch h1 { font-size: 1.25em; font-weight: 700; color: var(--text-dark); margin: 0; line-height: 1.2; }
-        .top-bar-pitch p { color: var(--text-light); font-size: 0.85em; margin: 2px 0 0 0; }
-        .top-bar-nav { flex-shrink: 0; font-size: 0.9em; }
-        .top-bar-nav a { color: var(--brand-color); text-decoration: none; margin-left: 15px; cursor: pointer; }
-        
-        /* Contenitore principale della CARD */
-        .content-card {
-            max-width: 1200px; width: 95%; margin: 40px 20px; background-color: var(--background-light);
-            color: var(--text-dark); padding: 35px; border-radius: var(--border-radius);
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2); box-sizing: border-box;
-        }
-        
-        /* 1. LAYOUT INIZIALE: Solo upload (singola colonna) */
-        .single-column-layout {
-            display: flex; justify-content: center; align-items: flex-start; min-height: 400px;
-        }
-        
-        /* 2. LAYOUT REPORT: Due colonne ampliate */
-        .report-columns-layout { 
-            display: none; grid-template-columns: 1fr 2fr; gap: 30px; margin-top: -10px; 
-        }
-        
-        .upload-component { 
-            padding: 20px; border-radius: var(--border-radius); text-align: center; 
-            max-width: 400px; width: 100%;
-        }
-        .upload-area {
-            background-color: #e9eff5; padding: 40px 20px; border-radius: var(--border-radius);
-            margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.2s;
-        }
-        .upload-icon { font-size: 4.5em; color: var(--brand-color); }
-        #fileInput { display: none; }
-        .results-box {
-            padding: 25px; border: 1px solid #ddd; background-color: #f7f7f7;
-            border-radius: var(--border-radius); text-align: left; margin-bottom: 25px;
-        }
-        .kpi-title { font-size: 1.25em; font-weight: 600; color: var(--brand-color); margin-bottom: 12px; }
-        .kpi-metric { font-size: 2em; font-weight: 900; color: var(--cta-color); margin-bottom: 18px; }
-        .kpi-list { list-style-type: none; padding: 0; font-size: 0.95em; color: var(--text-dark); }
-        .kpi-list li { margin-bottom: 6px; }
-        .cta-button-middle {
-            background-color: var(--cta-color); color: white; padding: 14px 35px; border: none;
-            border-radius: var(--border-radius); font-size: 1.15em; font-weight: 700; cursor: pointer;
-            width: 85%; margin: 0 auto; display: block; transition: background-color 0.2s;
-        }
-        .cta-button-middle:hover { background-color: #2e9f5e; }
-        .clausola-box { padding: 6px; margin-bottom: 6px; border-left: 4px solid; font-size: 0.85em; }
-        .HIGH { border-color: var(--danger-color); background-color: #fae6e6; color: var(--danger-color); }
-        .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
-        .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
-        .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
-        
-        /* Stili per la Barra di Navigazione Report/Grafico */
-        .report-nav-bar {
-            grid-column: 2 / 3; /* Occupa tutta la larghezza della colonna di destra */
-            margin-bottom: 15px;
-            display: flex;
-            border-bottom: 2px solid #ddd;
-        }
-        .report-nav-item {
-            padding: 10px 15px;
-            cursor: pointer;
-            font-weight: 600;
-            color: var(--text-light);
-            transition: color 0.2s, border-bottom 0.2s;
-            border-bottom: 2px solid transparent;
-        }
-        .report-nav-item.active {
-            color: var(--brand-color);
-            border-bottom: 2px solid var(--brand-color);
-        }
-        
-        /* Contenitori Report e Grafico */
-        #reportDetailContainer { display: block; } /* Di default mostriamo il report */
-        #chartContainer { display: none; padding: 10px; }
-        #reportWrapper { grid-column: 2 / 3; } /* Contenitore principale per Report/Grafico */
 
-        /* Stili per la Barra di Caricamento (invariati) */
-        #statusFeedback { margin-top: 25px; padding: 15px; border-radius: var(--border-radius); font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; }
+            font-family: var(--font-stack);
+
+            background-color: var(--background-main);
+
+            margin: 0;
+
+            padding: 0;
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            min-height: 100vh;
+
+            font-size: 16px;
+
+        }
+
+        .top-bar {
+
+            width: 100%;
+
+            background-color: var(--background-light);
+
+            color: var(--text-dark);
+
+            padding: 18px 50px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+
+            box-sizing: border-box;
+
+        }
+
+        .logo { font-size: 1.4em; font-weight: 800; flex-shrink: 0; color: var(--brand-color); }
+
+        .top-bar-pitch { text-align: center; flex-grow: 1; }
+
+        .top-bar-pitch h1 { font-size: 1.25em; font-weight: 700; color: var(--text-dark); margin: 0; line-height: 1.2; }
+
+        .top-bar-pitch p { color: var(--text-light); font-size: 0.85em; margin: 2px 0 0 0; }
+
+        .top-bar-nav { flex-shrink: 0; font-size: 0.9em; }
+
+        .top-bar-nav a { color: var(--brand-color); text-decoration: none; margin-left: 15px; cursor: pointer; }
+
+        
+
+        /* Contenitore principale della CARD */
+
+        .content-card {
+
+            max-width: 1200px; width: 95%; margin: 40px 20px; background-color: var(--background-light);
+
+            color: var(--text-dark); padding: 35px; border-radius: var(--border-radius);
+
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2); box-sizing: border-box;
+
+        }
+
+        
+
+        /* 1. LAYOUT INIZIALE: Solo upload (singola colonna) */
+
+        .single-column-layout {
+
+            display: flex; 
+
+            justify-content: center;
+
+            align-items: flex-start;
+
+            min-height: 400px;
+
+        }
+
+        
+
+        /* 2. LAYOUT REPORT: Due colonne ampliate */
+
+        .report-columns-layout { 
+
+            display: none; 
+
+            grid-template-columns: 1fr 2fr; 
+
+            gap: 30px; 
+
+            margin-top: -10px; 
+
+        }
+
+        
+
+        /* Stili per le colonne originali */
+
+        .upload-component { 
+
+            padding: 20px; border-radius: var(--border-radius); text-align: center; 
+
+            max-width: 400px; width: 100%;
+
+        }
+
+        .upload-area {
+
+            background-color: #e9eff5; padding: 40px 20px; border-radius: var(--border-radius);
+
+            margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
+
+            justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.2s;
+
+        }
+
+        .upload-icon { font-size: 4.5em; color: var(--brand-color); }
+
+        #fileInput { display: none; }
+
+        .results-box {
+
+            padding: 25px; border: 1px solid #ddd; background-color: #f7f7f7;
+
+            border-radius: var(--border-radius); text-align: left; margin-bottom: 25px;
+
+        }
+
+        .kpi-title { font-size: 1.25em; font-weight: 600; color: var(--brand-color); margin-bottom: 12px; }
+
+        .kpi-metric { font-size: 2em; font-weight: 900; color: var(--cta-color); margin-bottom: 18px; }
+
+        .kpi-list { list-style-type: none; padding: 0; font-size: 0.95em; color: var(--text-dark); }
+
+        .kpi-list li { margin-bottom: 6px; }
+
+        .cta-button-middle {
+
+            background-color: var(--cta-color); color: white; padding: 14px 35px; border: none;
+
+            border-radius: var(--border-radius); font-size: 1.15em; font-weight: 700; cursor: pointer;
+
+            width: 85%; margin: 0 auto; display: block; transition: background-color 0.2s;
+
+        }
+
+        .cta-button-middle:hover { background-color: #2e9f5e; }
+
+        .clausola-box { padding: 6px; margin-bottom: 6px; border-left: 4px solid; font-size: 0.85em; }
+
+        .HIGH { border-color: var(--danger-color); background-color: #fae6e6; color: var(--danger-color); }
+
+        .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
+
+        .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
+
+        .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
+
+        
+
+        /* NUOVI STILI PER LA BARRA DI CARICAMENTO */
+
+        #statusFeedback {
+
+            margin-top: 25px; 
+
+            padding: 15px; 
+
+            border-radius: var(--border-radius);
+
+            font-weight: 600; 
+
+            text-align: center; 
+
+            display: none;
+
+            /* Flexbox per allineare gli elementi */
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+        }
+
+        
+
         .status-error { background-color: #fbe6e6; color: var(--danger-color); }
+
         .status-success { background-color: #d4edda; color: #155724; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--brand-color); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 15px; }
+
+
+
+        /* Spinner (Cerchio Blu che Gira) */
+
+        .spinner { 
+
+            border: 4px solid #f3f3f3; 
+
+            border-top: 4px solid var(--brand-color);
+
+            border-radius: 50%; 
+
+            width: 20px; 
+
+            height: 20px; 
+
+            animation: spin 1s linear infinite; 
+
+            display: inline-block; 
+
+            margin-right: 15px; /* Spazio a destra del testo */
+
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-bar-container { width: 100%; height: 8px; background-color: #ddd; border-radius: 4px; overflow: hidden; margin-top: 10px; }
-        .loading-bar-fill { height: 100%; width: 30%; background-color: var(--brand-color); animation: move-bar 2s linear infinite; border-radius: 4px; }
-        @keyframes move-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        .processing-content { display: flex; align-items: center; font-weight: 600; color: var(--text-dark); margin-bottom: 5px; }
-        .ai-suggestion-box { padding: 15px; border: 1px dashed var(--brand-color); border-radius: var(--border-radius); margin-top: 20px; background-color: #e9f5ff; font-size: 0.9em; }
-        .reset-button { background-color: var(--brand-color); color: white; padding: 12px 25px; border: none; border-radius: var(--border-radius); font-size: 1.05em; font-weight: 700; cursor: pointer; width: 100%; margin-top: 30px; transition: background-color 0.2s; text-align: center; display: block; }
-        .reset-button:hover { background-color: #337ab7; }
+
+        
+
+        /* Contenitore della barra di avanzamento */
+
+        .loading-bar-container {
+
+            width: 100%;
+
+            height: 8px; /* Altezza della striscia */
+
+            background-color: #ddd;
+
+            border-radius: 4px;
+
+            overflow: hidden;
+
+            margin-top: 10px;
+
+        }
+
+        
+
+        /* Striscia che avanza */
+
+        .loading-bar-fill {
+
+            height: 100%;
+
+            width: 30%; /* Larghezza iniziale */
+
+            background-color: var(--brand-color);
+
+            animation: move-bar 2s linear infinite; /* Animazione di movimento */
+
+            border-radius: 4px;
+
+        }
+
+
+
+        /* Animazione per la linea che avanza (effetto indeterminato) */
+
+        @keyframes move-bar {
+
+            0% { transform: translateX(-100%); }
+
+            100% { transform: translateX(100%); }
+
+        }
+
+
+
+        /* Contenitore per il testo e lo spinner */
+
+        .processing-content {
+
+            display: flex;
+
+            align-items: center;
+
+            font-weight: 600;
+
+            color: var(--text-dark); /* Colore del testo durante l'analisi */
+
+            margin-bottom: 5px;
+
+        }
+
+
+
+
+
+        .ai-suggestion-box {
+
+            padding: 15px;
+
+            border: 1px dashed var(--brand-color);
+
+            border-radius: var(--border-radius);
+
+            margin-top: 20px;
+
+            background-color: #e9f5ff;
+
+            font-size: 0.9em;
+
+        }
+
+        
+
+        .reset-button {
+
+            background-color: var(--brand-color);
+
+            color: white;
+
+            padding: 12px 25px;
+
+            border: none;
+
+            border-radius: var(--border-radius);
+
+            font-size: 1.05em;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            width: 100%;
+
+            margin-top: 30px;
+
+            transition: background-color 0.2s;
+
+            text-align: center;
+
+            display: block; 
+
+        }
+
+        .reset-button:hover { 
+
+            background-color: #337ab7; 
+
+        }
+
     </style>
+
 </head>
+
 <body>
 
+
+
     <div class="top-bar">
+
         <div class="logo">Lux-Ai</div>
+
         
+
         <div class="top-bar-pitch">
+
             <h1>Risparmia 4+ Ore / Contratto. Analisi Rischi Legali in Minuti.</h1>
+
             <p>MVP Accessibile a tutti: Inizia ora la tua analisi.</p>
+
         </div>
+
         
+
         <div class="top-bar-nav">
+
             <a href="mailto:info@lux-ai.com" style="color: var(--brand-color); text-decoration: none;">Contatti</a> | 
+
             <a href="#" id="topNavAccessLink" style="color: var(--brand-color); text-decoration: none;">MVP Attiva</a>
+
         </div>
+
     </div>
+
+
 
     <div class="content-card">
+
         
+
         <div id="uploadContainer" class="single-column-layout">
+
             <div class="upload-component">
+
                 <input type="file" id="fileInput" accept="application/pdf">
+
                 
+
                 <div class="upload-area" id="uploadArea">
+
                     <div class="upload-icon">📄</div>
+
                     <p style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
+
                     <p style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
+
                 </div>
+
                 
+
                 <button class="cta-button-middle" id="analyzeButton">Carica il tuo file</button>
+
                 
+
                 <div id="statusFeedback" class="status-processing" style="display: none; flex-direction: column; background-color: #f7f7f7; border: 1px solid #ddd;">
+
                     
+
                     <div class="processing-content">
+
                         <span id="spinner" class="spinner"></span> 
+
                         <span id="statusText">Analisi AI in corso... Potrebbe volerci qualche secondo.</span>
+
                     </div>
+
+
 
                     <div class="loading-bar-container">
+
                         <div class="loading-bar-fill"></div>
+
                     </div>
+
                 </div>
 
+
+
             </div>
+
         </div>
+
+
 
         <div id="reportContainer" class="report-columns-layout">
+
             
+
             <div class="kpi-column">
+
                 <div class="results-box">
+
                     <div class="kpi-title">ROI & Efficienza</div>
+
                     <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
+
                     <div class="kpi-metric" id="roiMetric">€45.00</div>
+
                     
+
                     <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
+
                     <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p>
+
                 </div>
+
                 
+
                 <div class="results-box">
+
                     <div class="kpi-title">Stato Analisi</div>
+
                     <ul class="kpi-list" id="summaryList">
+
                         <li>• Focus Clausole Critiche: Liability & Indemnification</li>
+
                         <li>• Clausole Controllate: 2 (MVP)</li>
+
                         <li>• Rischio Complessivo: **Medio**</li>
+
                         <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+
                         <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
+
                     </ul>
-                </div>
-            </div>
 
-            <div id="reportWrapper">
-                
-                <div class="report-nav-bar">
-                    <div class="report-nav-item active" id="navReport">Report Dettagliato</div>
-                    <div class="report-nav-item" id="navChart">Rischio Grafico</div>
-                </div>
-
-                <div class="results-box" id="reportDetailContainer" style="padding: 25px;">
-                    <div class="kpi-title">Report Dettaglio Rischi</div>
-                    <div id="reportDetail">
-                        <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
-                    </div>
-                </div>
-
-                <div class="results-box" id="chartContainer" style="padding: 25px; display: none;">
-                    <div class="kpi-title" style="margin-bottom: 20px;">Distribuzione del Rischio per Clausola</div>
-                    <canvas id="riskChart"></canvas>
                 </div>
 
             </div>
+
+
+
+            <div class="results-box" style="padding: 25px;">
+
+                <div class="kpi-title">Report Dettaglio Rischi</div>
+
+                <div id="reportDetail">
+
+                    <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
+
+                </div>
+
+            </div>
+
             
+
             <button id="resetButton" class="reset-button" style="grid-column: 1 / 3;">
+
                 Analizza un altro file
+
             </button>
+
         </div>
+
         
+
     </div>
+
     
+
     <div class="trust-section"></div>
+
+
 
 </body>
 
+
+
 <script>
+
     /* ---------------------------------------------------------------------- */
+
     /* CONFIGURAZIONE E UTILITY DOM */
+
     /* ---------------------------------------------------------------------- */
+
     
-    // RIFERIMENTI AI CONTENITORI
+
+    const IS_USER_LOGGED_IN = true; 
+
+    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
+
+
+
     const fileInput = document.getElementById('fileInput');
+
     const uploadArea = document.getElementById('uploadArea');
+
     const analyzeButton = document.getElementById('analyzeButton'); 
+
     const statusFeedback = document.getElementById('statusFeedback');
+
     const statusText = document.getElementById('statusText');
+
     const spinner = document.getElementById('spinner');
 
+
+
+    // RIFERIMENTI AI CONTENITORI
+
     const uploadContainer = document.getElementById('uploadContainer');
+
     const reportContainer = document.getElementById('reportContainer');
+
     const resetButton = document.getElementById('resetButton'); 
 
-    const roiMetric = document.getElementById('roiMetric');
-    const timeMetric = document.getElementById('timeMetric');
-    const summaryList = document.getElementById('summaryList');
-    
-    // NUOVI RIFERIMENTI PER GRAFICI E NAVIGAZIONE
-    const navReport = document.getElementById('navReport');
-    const navChart = document.getElementById('navChart');
-    const reportDetailContainer = document.getElementById('reportDetailContainer');
-    const chartContainer = document.getElementById('chartContainer');
-    const reportDetail = document.getElementById('reportDetail'); // Contenitore del dettaglio testuale
-    const riskChartCanvas = document.getElementById('riskChart'); // Canvas per Chart.js
 
-    let currentChart = null; // Variabile per mantenere l'istanza del grafico
+
+    const roiMetric = document.getElementById('roiMetric');
+
+    const timeMetric = document.getElementById('timeMetric');
+
+    const summaryList = document.getElementById('summaryList');
+
+    const reportDetail = document.getElementById('reportDetail');
+
+
 
     analyzeButton.textContent = 'Carica il tuo file';
 
+
+
     // ----------------------------------------------------------------------
-    // FUNZIONI DI VISUALIZZAZIONE E NAVIGAZIONE
+
+    // FUNZIONI DI VISUALIZZAZIONE
+
     // ----------------------------------------------------------------------
+
     
+
+    // Funzione per mostrare l'area di upload e nascondere il report
+
     function showUploadLayout() {
+
         uploadContainer.style.display = 'flex'; 
+
         reportContainer.style.display = 'none';
+
         
+
+        // Resetta l'input file e nasconde il feedback di stato
+
         showStatus('In attesa di caricamento...', 'processing', false);
+
         statusFeedback.style.display = 'none'; 
+
         fileInput.value = '';
+
     }
+
+
+
+    // Funzione per mostrare il report e nascondere l'upload
 
     function showReportLayout() {
+
         uploadContainer.style.display = 'none'; 
+
         reportContainer.style.display = 'grid'; 
+
     }
+
     
-    // Funzione per mostrare Report o Grafico
-    function updateReportView(view) {
-        if (view === 'report') {
-            reportDetailContainer.style.display = 'block';
-            chartContainer.style.display = 'none';
-            navReport.classList.add('active');
-            navChart.classList.remove('active');
-        } else if (view === 'chart') {
-            reportDetailContainer.style.display = 'none';
-            chartContainer.style.display = 'block';
-            navReport.classList.remove('active');
-            navChart.classList.add('active');
-        }
-    }
-    
+
+    // Al caricamento della pagina, mostra solo l'upload
+
     window.onload = showUploadLayout;
+
     
+
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E RISULTATI
+
+    // FUNZIONI DI STATO E RISULTATI (AGGIORNATA PER LA NUOVA BARRA)
+
     // ----------------------------------------------------------------------
+
+
 
     function showStatus(message, type = 'processing', showSpinner = true) {
+
         
+
+        // Se si passa a un'analisi o a un errore, assicurati che l'area di upload sia visibile
+
         if (type !== 'success') {
+
             uploadContainer.style.display = 'flex';
+
             reportContainer.style.display = 'none';
+
         }
 
-        statusFeedback.style.display = 'flex';
+
+
+        statusFeedback.style.display = 'flex'; // Usiamo flex per il nuovo layout interno
+
         statusText.textContent = message;
+
         
+
+        // Gestione della VISIBILITÀ e STILE
+
         const loadingBar = statusFeedback.querySelector('.loading-bar-container');
+
         const processingContent = statusFeedback.querySelector('.processing-content');
 
-        // Reset dei risultati statici
-        if (type !== 'success') {
-            roiMetric.textContent = '€45.00'; 
-            timeMetric.textContent = '12 Minuti'; 
-            summaryList.innerHTML = `
-                <li>• Focus Clausole Critiche: Liability & Indemnification</li>
-                <li>• Clausole Controllate: 2 (MVP)</li>
-                <li>• Rischio Complessivo: **Medio**</li>
-                <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
-                <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
-             `;
-            reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
-            
-            // Distruggi il grafico precedente se esiste
-            if (currentChart) {
-                currentChart.destroy();
-                currentChart = null;
-            }
-            updateReportView('report'); // Torna alla vista report di default
-        }
-        
+
+
         if (type === 'processing') {
-            statusFeedback.className = ``;
+
+            // Modalità Analisi/Caricamento (Mostra Barra e Spinner)
+
+            statusFeedback.className = ``; // Rimuovi classi di errore/successo per lo stato generico
+
             loadingBar.style.display = 'block';
+
             processingContent.style.display = 'flex';
+
             spinner.style.display = 'inline-block';
-            statusFeedback.style.backgroundColor = '#f7f7f7';
-            statusFeedback.style.border = '1px solid #ddd';
+
+            statusFeedback.style.backgroundColor = '#f7f7f7'; // Reset colore di sfondo
+
+            statusFeedback.style.border = '1px solid #ddd'; // Reset bordo
+
             statusText.style.color = 'var(--text-dark)';
 
+
+
         } else if (type === 'error') {
+
+            // Modalità Errore (Nasconde Barra, Mostra Solo Testo Errore)
+
             statusFeedback.className = `status-error`;
+
             loadingBar.style.display = 'none';
+
             processingContent.style.display = 'flex';
+
             spinner.style.display = 'none';
-            statusText.style.color = 'var(--danger-color)';
+
+            statusText.style.color = 'var(--danger-color)'; // Colore del testo per errore
+
+
 
         } else if (type === 'success') {
+
+            // Modalità Successo (Nasconde tutto, viene mostrato solo il report)
+
             statusFeedback.className = `status-success`;
+
             loadingBar.style.display = 'none';
-            processingContent.style.display = 'none';
+
+            processingContent.style.display = 'none'; // Nascondi il contenuto di processing
+
+            
+
         }
+
+
+
+        // Reset risultati statici
+
+        if (type !== 'success') {
+
+            roiMetric.textContent = '€45.00'; 
+
+            timeMetric.textContent = '12 Minuti'; 
+
+            summaryList.innerHTML = `
+
+                <li>• Focus Clausole Critiche: Liability & Indemnification</li>
+
+                <li>• Clausole Controllate: 2 (MVP)</li>
+
+                <li>• Rischio Complessivo: **Medio**</li>
+
+                <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+
+                <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
+
+              `;
+
+            document.getElementById('riskScoreItem').textContent = 'Indice di Rischio: N/D / 100';
+
+            document.getElementById('riskMotivationItem').innerHTML = 'Motivazione: Carica un file per l\'analisi.';
+
+            reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
+
+        }
+
     }
 
+
+
     function displayResult(result) {
+
         showReportLayout(); 
 
+
+
         const { 
+
             nome_documento, 
+
             risparmio_stimato_eur, 
+
             tempo_risparmiato_min, 
+
             analisi_clausole, 
+
             riassunto_breve,
+
             tempo_lettura_avvocato_stimato_min,
+
             rischio_complessivo_percentuale,
+
             motivazione_rischio_complessivo,
+
             suggerimenti_ai
+
         } = result;
 
+
+
         // --- COLONNA KPI ---
+
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
+
         timeMetric.innerHTML = `
+
             ${tempo_risparmiato_min} Minuti 
+
             <span style="font-size: 0.7em; color: var(--text-light); display: block;">(Stimato Avv.: ${tempo_lettura_avvocato_stimato_min} min)</span>
+
         `;
+
+
 
         let riskSummaryText = 'BASSO';
+
         if (rischio_complessivo_percentuale >= 67) riskSummaryText = 'ALTO';
+
         else if (rischio_complessivo_percentuale >= 34) riskSummaryText = 'MEDIO';
+
         
+
         summaryList.innerHTML = `
+
             <li>• Documento: ${nome_documento.substring(0, 30)}...</li>
+
             <li>• Clausole Controllate: ${analisi_clausole.length}</li>
+
             <li>• Rischio Complessivo: **${riskSummaryText}**</li>
+
             <li id="riskScoreItem">Indice di Rischio: ${rischio_complessivo_percentuale} / 100</li>
+
             <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: ${motivazione_rischio_complessivo}</li>
+
         `;
 
-        // --- COLONNA REPORT DETTAGLIO (Report Testuale) ---
+
+
+        // --- COLONNA REPORT DETTAGLIO ---
+
         let detailHtml = `
-            <p class="kpi-title" style="margin-top: 0;">Clausole Analizzate</p>
+
+            <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
+
             ${analisi_clausole.map(clausola => `
+
                 <div class="clausola-box ${clausola.rischio.replace(' ', '-')}">
+
                     <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
+
                     ${clausola.rischio === 'NON TROVATA' ? 'Clausola non trovata nel documento.' : clausola.testo_clausola_esatta.substring(0, 100) + '...'}
+
                 </div>
+
             `).join('')}
+
         `;
+
         
+
         // Sintesi Finale e Suggerimenti AI
+
         detailHtml += `
+
             <div class="ai-suggestion-box">
+
                 <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
+
                 <p style="font-size: 0.9em; margin-bottom: 5px;">
+
                     Il documento presenta un livello di rischio complessivo **${riskSummaryText} (${rischio_complessivo_percentuale}/100)**.
+
                 </p>
+
                 <p style="font-size: 0.9em; font-weight: 600; color: var(--brand-color); margin-top: 10px; margin-bottom: 5px;">
+
                     Azioni Consigliate:
+
                 </p>
+
                 <p style="font-size: 0.9em; margin-top: 0;">${suggerimenti_ai}</p>
+
                 <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">Riassunto: ${riassunto_breve}</p>
+
             </div>
+
         `;
+
+
 
         reportDetail.innerHTML = detailHtml;
 
-        // --- AGGIUNTA LOGICA GRAFICO ---
-        drawRiskChart(analisi_clausole, rischio_complessivo_percentuale);
-        
-        statusFeedback.style.display = 'none'; 
-    }
-    
-    // ----------------------------------------------------------------------
-    // FUNZIONE PER CREARE IL GRAFICO (Chart.js)
-    // ----------------------------------------------------------------------
 
-    function drawRiskChart(clausole, overallRisk) {
-        // Distruggi il grafico precedente se esiste, per evitare sovrapposizioni
-        if (currentChart) {
-            currentChart.destroy();
+
+        statusFeedback.style.display = 'none'; 
+
+    }
+
+    
+
+    async function uploadFile(file) {
+
+        const formData = new FormData();
+
+        formData.append('file', file); 
+
+        
+
+        uploadContainer.style.display = 'flex'; 
+
+        reportContainer.style.display = 'none';
+
+
+
+        // Avvia la nuova visualizzazione di caricamento
+
+        showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
+
+
+
+        try {
+
+            const response = await fetch('/analyze', {
+
+                method: 'POST',
+
+                body: formData,
+
+            });
+
+
+
+            const data = await response.json();
+
+            
+
+            if (response.ok && data.status === 'success') {
+
+                displayResult(data.result);
+
+            } else {
+
+                showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
+
+            }
+
+        } catch (error) {
+
+            showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
+
         }
 
-        const riskMapping = {
-            'HIGH': { value: 3, color: 'rgb(220, 53, 69)' },
-            'MEDIUM': { value: 2, color: 'rgb(255, 193, 7)' },
-            'LOW': { value: 1, color: 'rgb(40, 167, 69)' },
-            'NON TROVATA': { value: 0, color: 'rgb(153, 153, 153)' }
-        };
-
-        const labels = clausole.map(c => c.tipo);
-        const dataValues = clausole.map(c => riskMapping[c.rischio] ? riskMapping[c.rischio].value : 0);
-        const backgroundColors = clausole.map(c => riskMapping[c.rischio] ? riskMapping[c.rischio].color : 'rgb(153, 153, 153)');
-
-        currentChart = new Chart(riskChartCanvas, {
-            type: 'bar', // Tipo di grafico a barre
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Livello di Rischio (1=Low, 3=High)',
-                    data: dataValues,
-                    backgroundColor: backgroundColors,
-                    borderColor: 'rgba(0,0,0,0.1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 3.5, // Massima scala a 3 (High)
-                        ticks: {
-                            callback: function(value, index, ticks) {
-                                if (value === 3) return 'Alto';
-                                if (value === 2) return 'Medio';
-                                if (value === 1) return 'Basso';
-                                if (value === 0) return 'N/T';
-                                return null;
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                const riskText = ['N/T', 'Basso', 'Medio', 'Alto'][context.parsed.y];
-                                return riskText;
-                            }
-                        }
-                    }
-                }
-            }
-        });
     }
 
-    
+
+
+
+
     // ----------------------------------------------------------------------
+
     // GESTORE DI EVENTI PRINCIPALE
+
     // ----------------------------------------------------------------------
+
     
+
     const ctaAction = (e) => {
+
         e.preventDefault();
+
         fileInput.click();
+
     }
+
+
 
     uploadArea.addEventListener('click', ctaAction);
+
     analyzeButton.addEventListener('click', ctaAction);
+
     
+
     fileInput.addEventListener('change', (e) => {
+
         const file = e.target.files[0];
+
         if (file) {
-              uploadFile(file);
+
+             uploadFile(file);
+
         }
+
     });
+
     
+
     // Evento Reset
+
     resetButton.addEventListener('click', showUploadLayout);
 
-    // Eventi Navigazione Report/Grafico
-    navReport.addEventListener('click', () => updateReportView('report'));
-    navChart.addEventListener('click', () => updateReportView('chart'));
+
+
 </script>
+
 </html>
