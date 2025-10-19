@@ -7,7 +7,6 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates 
 from pydantic import BaseModel, Field
-# Nota: Questi import implicano che devi avere un file celery_config.py funzionante.
 from celery_config import celery_app
 from worker import analyze_pdf_task
 
@@ -21,7 +20,7 @@ HOME_URL = 'https://luxailegal.wixsite.com/my-site-9'
 
 # --- SIMULAZIONE DATABASE (ACCESSO SEMPLIFICATO) ---
 USERS_DB = {
-    # Tutti gli utenti loggati sono ora considerati "paganti" (accesso completo)
+    # Mantenuti per l'iniezione HTML, ma il paywall non li userà più
     "user_wix_demo": {"is_logged_in": True, "is_paying_member": True, "email": "test-demo@lux-ai.com"}, 
     "ANONIMO": {"is_logged_in": False, "is_paying_member": False, "email": None},
 }
@@ -57,26 +56,26 @@ async def read_index(request: Request):
     user_id = get_current_user_id(request)
     user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
     
-    # Ora is_paying_member è True se l'utente è loggato.
+    # Per l'MVP, forziamo il frontend a comportarsi come se l'utente fosse loggato,
+    # anche se non lo è (il JS ora lo forza a true)
     return templates.TemplateResponse(
         "index.html", 
         {
             "request": request,
-            "is_logged_in": str(user_data["is_logged_in"]).lower(), 
-            "is_paying_member": str(user_data["is_paying_member"]).lower(),
+            "is_logged_in": "true", # Mantenuto per evitare errori di Jinja
+            "is_paying_member": "true", # Mantenuto per evitare errori di Jinja
         }
     )
 
 # --- ROTTA: Invia l'Analisi al Worker (Asincrono) ---
 @app.post("/analyze", response_model=JobResponse)
 async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
-    # PAYWALL DI SICUREZZA LATO SERVER (Ora solo Login richiesto)
+    # 💥 CRITICITÀ RISOLTA: La verifica del login è stata rimossa per l'MVP accessibile.
     user_id = get_current_user_id(request)
-    user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
+    # user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
     
-    # Se l'utente NON è loggato, l'accesso è negato.
-    if not user_data["is_logged_in"]:
-        raise HTTPException(status_code=403, detail="Accesso negato. Solo gli utenti loggati possono avviare l'analisi.")
+    # 💥 RIMOSSO IL PAYWALL: if not user_data["is_logged_in"]:
+    # 💥 RIMOSSO IL PAYWALL:     raise HTTPException(status_code=403, detail="Accesso negato...")
 
     # Il resto della logica di upload rimane invariato
     if file.content_type != "application/pdf":

@@ -169,12 +169,9 @@
     /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
-    // VARIABILI D'ACCESSO (Queste sono iniettate da Jinja2 nel main.py)
-    // Se il tuo main.py invia 'true' o 'false', questa riga lo cattura.
-    // Ho rimosso l'iniezione Jinja per semplicità di copia/incolla, ma
-    // ASSUMIAMO che il tuo main.py inietti la variabile per l'accesso.
-    // L'endpoint /analyze richiede il login, quindi forziamo il redirect se non loggato.
-    const IS_USER_LOGGED_IN = "{{ is_logged_in | lower }}" === "true"; 
+    // 💥 MODIFICA CRITICA QUI: Forziamo il login a TRUE per rendere l'MVP accessibile
+    // e cambiare il testo del bottone da "Accedi" a "Carica".
+    const IS_USER_LOGGED_IN = true; 
     const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
 
     const fileInput = document.getElementById('fileInput');
@@ -189,7 +186,7 @@
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    // Imposta il testo del bottone in base allo stato di accesso.
+    // Imposta il testo del bottone in base allo stato di accesso (ora forzato a true)
     analyzeButton.textContent = IS_USER_LOGGED_IN ? 'Carica il tuo file' : 'Accedi per l\'anteprima';
 
 
@@ -211,14 +208,14 @@
         
         // Reset risultati statici se non è un successo
         if (type !== 'success') {
-             roiMetric.textContent = '€400+'; 
-             timeMetric.textContent = '4+ Ore'; 
-             summaryList.innerHTML = `
+            roiMetric.textContent = '€400+'; 
+            timeMetric.textContent = '4+ Ore'; 
+            summaryList.innerHTML = `
                 <li>• Focus Clausole Critiche: Liability & Indemnification</li>
                 <li>• Clausole Controllate: 2 (MVP)</li>
                 <li>• Rischio Complessivo: **Medio**</li>
-             `;
-             reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
+              `;
+            reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
         }
     }
 
@@ -334,14 +331,12 @@
     const ctaAction = (e) => {
         e.preventDefault();
 
-        // **NOTA BENE:** Il tuo main.py sta bloccando gli utenti NON loggati con 403.
-        // Se la variabile IS_USER_LOGGED_IN non è iniettata correttamente da Jinja2,
-        // questo blocco non funzionerà a dovere.
+        // 🎯 ORA SEMPRE TRUE, QUINDI SEMPRE uploadArea.click()
         if (IS_USER_LOGGED_IN) {
-            // Utente loggato: Avvia l'upload
+            // Utente loggato (forzato): Avvia l'upload
             fileInput.click();
         } else {
-            // Utente NON loggato: Reindirizza al login
+            // Utente NON loggato: Reindirizza al login (NON DEVE ACCADERE ORA)
             window.location.href = WIX_LOGIN_URL; 
         }
     }
@@ -357,7 +352,7 @@
             if (IS_USER_LOGGED_IN) {
                 uploadFile(file); // 👈 AZIONE REALE CON IL BACKEND
             } else {
-                // Fallback nel caso in cui il bottone non abbia reindirizzato
+                // Questo non dovrebbe mai accadere con IS_USER_LOGGED_IN = true
                 showStatus('Accesso richiesto. Clicca il bottone per accedere.', 'error', false);
             }
         }
