@@ -64,11 +64,10 @@
         
         /* 2. LAYOUT REPORT: Due colonne ampliate */
         .report-columns-layout { 
-            display: none; 
+            display: none; /* Inizialmente nascosto */
             grid-template-columns: 1fr 2fr; 
             gap: 30px; 
-            margin-top: -10px; 
-            position: relative;
+            margin-top: 15px; /* Spazio sotto la barra di navigazione del report */
         }
         
         /* Stili per le colonne originali */
@@ -81,25 +80,15 @@
             margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
             justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.2s;
         }
-        
-        /* Icone SVG per l'area di upload */
-        .upload-icon { 
-            width: 60px;
-            height: 60px;
-            color: var(--brand-color); 
-            display: block;
+        .upload-icon { font-size: 4.5em; color: var(--brand-color); transition: transform 0.8s ease-in-out; }
+        /* Animazione Rotazione Icona */
+        .rotate-paper {
+            animation: rotate-icon 1.5s infinite linear;
         }
-
-        /* Rotazione SOLO sull'icona di caricamento (loadingUploadIcon) */
-        .upload-area.loading #loadingUploadIcon {
-            animation: spin 1.5s linear infinite; 
+        @keyframes rotate-icon {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        
-        /* Gestione visibilità testi in base allo stato */
-        .upload-area.loading .upload-text-default { display: none; }
-        .upload-area.loading .upload-text-loading { display: block; }
-        
-        .upload-text-loading { display: none; } /* Nascosto di default */
 
         #fileInput { display: none; }
         .results-box {
@@ -110,22 +99,19 @@
         .kpi-metric { font-size: 2em; font-weight: 900; color: var(--cta-color); margin-bottom: 18px; }
         .kpi-list { list-style-type: none; padding: 0; font-size: 0.95em; color: var(--text-dark); }
         .kpi-list li { margin-bottom: 6px; }
-        
-        /* Il bottone CTA-button-middle che viene nascosto */
         .cta-button-middle {
             background-color: var(--cta-color); color: white; padding: 14px 35px; border: none;
             border-radius: var(--border-radius); font-size: 1.15em; font-weight: 700; cursor: pointer;
             width: 85%; margin: 0 auto; display: block; transition: background-color 0.2s;
         }
         .cta-button-middle:hover { background-color: #2e9f5e; }
-        
         .clausola-box { padding: 6px; margin-bottom: 6px; border-left: 4px solid; font-size: 0.85em; }
         .HIGH { border-color: var(--danger-color); background-color: #fae6e6; color: var(--danger-color); }
         .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
         .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
         .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
         
-        /* BARRA DI CARICAMENTO (SOTTO L'UPLOAD) */
+        /* NUOVI STILI PER LA BARRA DI CARICAMENTO */
         #statusFeedback {
             margin-top: 25px; 
             padding: 15px; 
@@ -133,14 +119,16 @@
             font-weight: 600; 
             text-align: center; 
             display: none;
-            flex-direction: column;
-            background-color: #f7f7f7; 
-            border: 1px solid #ddd;
+            /* Flexbox per allineare gli elementi */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .status-error { background-color: #fbe6e6; color: var(--danger-color); }
-        
-        /* Spinner e Animazione di Rotazione */
+        .status-success { background-color: #d4edda; color: #155724; }
+
+        /* Spinner (Cerchio Blu che Gira) */
         .spinner { 
             border: 4px solid #f3f3f3; 
             border-top: 4px solid var(--brand-color);
@@ -149,67 +137,143 @@
             height: 20px; 
             animation: spin 1s linear infinite; 
             display: inline-block; 
-            margin-right: 15px;
-            flex-shrink: 0;
+            margin-right: 15px; /* Spazio a destra del testo */
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* Contenitore della barra di avanzamento */
         .loading-bar-container {
-            width: 100%; height: 8px; background-color: #ddd;
-            border-radius: 4px; overflow: hidden; margin-top: 10px;
+            width: 100%;
+            height: 8px; /* Altezza della striscia */
+            background-color: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
         }
+        
+        /* Striscia che avanza */
         .loading-bar-fill {
-            height: 100%; width: 30%; background-color: var(--brand-color);
-            animation: move-bar 2s linear infinite; 
+            height: 100%;
+            width: 30%; /* Larghezza iniziale */
+            background-color: var(--brand-color);
+            animation: move-bar 2s linear infinite; /* Animazione di movimento */
             border-radius: 4px;
         }
+
+        /* Animazione per la linea che avanza (effetto indeterminato) */
         @keyframes move-bar {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
         }
+
+        /* Contenitore per il testo e lo spinner */
         .processing-content {
-            display: flex; align-items: center; font-weight: 600;
-            color: var(--text-dark); margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-dark); /* Colore del testo durante l'analisi */
+            margin-bottom: 5px;
         }
 
-        /* BARRA DI NAVIGAZIONE DEL REPORT */
-        .report-nav-bar {
-            grid-column: 1 / 3; 
-            display: flex;
-            background-color: #f0f0f0;
-            border-bottom: 1px solid #ddd;
-            border-radius: var(--border-radius) var(--border-radius) 0 0; 
-            overflow: hidden; 
-            margin-bottom: 20px; 
+
+        .ai-suggestion-box {
+            padding: 15px;
+            border: 1px dashed var(--brand-color);
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+            background-color: #e9f5ff;
+            font-size: 0.9em;
         }
-        .report-nav-item {
-            padding: 12px 20px;
+        
+        .reset-button {
+            background-color: var(--brand-color);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.05em;
+            font-weight: 700;
             cursor: pointer;
+            width: 100%;
+            margin-top: 30px;
+            transition: background-color 0.2s;
+            text-align: center;
+            display: block; 
+        }
+        .reset-button:hover { 
+            background-color: #337ab7; 
+        }
+
+        /* NUOVI STILI PER LA BARRA REPORT/GRAFICO */
+        #reportNav {
+            width: 100%;
+            background-color: #2c3e50; /* Nero/scuro come richiesto */
+            height: 40px;
+            border-top-left-radius: var(--border-radius);
+            border-top-right-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0;
+            margin-top: -35px; /* Attacca alla parte superiore del content-card */
+            box-sizing: border-box;
+            max-width: 1200px;
+            width: 95%;
+            z-index: 10;
+        }
+
+        .nav-item {
+            color: #ccc;
+            padding: 0 20px;
+            font-size: 0.9em;
             font-weight: 600;
-            color: var(--text-dark);
-            border-right: 1px solid #eee;
+            cursor: pointer;
+            height: 100%;
+            display: flex;
+            align-items: center;
             transition: background-color 0.2s, color 0.2s;
         }
-        .report-nav-item:last-child {
-            border-right: none;
-        }
-        .report-nav-item:hover {
-            background-color: #e0e0e0;
-        }
-        .report-nav-item.active {
-            background-color: #2c3e50; 
-            color: white;
+
+        .nav-item:hover {
+            color: var(--background-light);
         }
 
-        #chartsContainer {
-            min-height: 200px; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--text-light);
-            font-style: italic;
+        .nav-item.active {
+            color: var(--brand-color); /* Colore del brand per la scheda attiva */
+            background-color: var(--background-light); /* Sfondo bianco per staccare dal report */
+            border-bottom: 3px solid var(--brand-color);
+            margin-bottom: -3px; /* Compensazione per il bordo */
         }
-
+        /* Contenitore della report/chart che deve seguire la larghezza della tabella grossa */
+        .report-content-wrapper {
+             /* Il report-columns-layout ha una larghezza del 100% all'interno della content-card.
+                Questo contenitore deve avere la stessa larghezza del reportContainer. */
+             max-width: 100%; /* Si estende quanto la content-card */
+             margin-top: 0;
+        }
+        /* Per fare in modo che la nav si allinei correttamente con report-columns-layout */
+        #reportNav {
+            margin-left: 35px;
+            margin-top: -35px;
+            width: calc(100% - 70px);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .results-box:nth-child(2) {
+             /* Il report dettaglio si trova nella seconda colonna (2/3 della larghezza) */
+             grid-column: 2 / 3;
+        }
+        #chartContent {
+            /* Inizialmente nascosto */
+            display: none;
+            grid-column: 1 / 3; /* Occupa entrambe le colonne */
+            padding: 25px;
+            border: 1px solid #ddd;
+            background-color: #f7f7f7;
+            border-radius: var(--border-radius);
+            text-align: center;
+            min-height: 300px; /* Altezza minima per i grafici */
+        }
     </style>
 </head>
 <body>
@@ -235,38 +299,19 @@
                 <input type="file" id="fileInput" accept="application/pdf">
                 
                 <div class="upload-area" id="uploadArea">
-                    
-                    <svg id="defaultUploadIcon" class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <line x1="10" y1="9" x2="8" y2="9"></line>
-                    </svg>
-                    
-                    <svg id="loadingUploadIcon" class="upload-icon" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <path d="M12 2v10"></path>
-                        <path d="M5 9l-3 3 3 3"></path>
-                        <path d="M19 9l3 3-3 3"></path>
-                    </svg>
-
-                    
-                    <p class="upload-text-default" style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
-                    <p class="upload-text-default" style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
-
-                    
-                    <p class="upload-text-loading" style="font-weight: 600; color: var(--brand-color);">Caricamento in corso...</p>
-                    <p class="upload-text-loading" style="font-size: 0.9em; color: var(--text-light);">Analisi AI in preparazione. Attendere prego.</p>
+                    <div class="upload-icon" id="uploadIcon">📄</div>
+                    <div id="uploadText">
+                        <p style="font-weight: 600; color: var(--text-dark); margin-bottom: 5px;">Carica qui il tuo PDF Legale</p>
+                        <p style="font-size: 0.9em; color: var(--text-light); margin-top: 0;">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
+                    </div>
                 </div>
                 
                 <button class="cta-button-middle" id="analyzeButton">Carica il tuo file</button>
                 
-                <div id="statusFeedback" style="display: none; flex-direction: column;">
+                <div id="statusFeedback" class="status-processing" style="display: none; flex-direction: column; background-color: #f7f7f7; border: 1px solid #ddd;">
                     
                     <div class="processing-content">
-                        <span id="spinner" class="spinner"></span> 
+                        <span id="spinner" class="spinner" style="display: none;"></span> 
                         <span id="statusText">Analisi AI in corso... Potrebbe volerci qualche secondo.</span>
                     </div>
 
@@ -278,48 +323,51 @@
             </div>
         </div>
 
+        <div id="reportNav" style="display: none;">
+            <div class="nav-item active" id="navReport">Report</div>
+            <div class="nav-item" id="navChart">Grafico</div>
+        </div>
+
         <div id="reportContainer" class="report-columns-layout">
             
-            <div class="report-nav-bar">
-                <div class="report-nav-item active" id="reportTab">Report Dettaglio</div>
-                <div class="report-nav-item" id="chartsTab">Grafici</div>
-            </div>
-
-            <div class="kpi-column">
-                <div class="results-box">
-                    <div class="kpi-title">ROI & Efficienza</div>
-                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
-                    <div class="kpi-metric" id="roiMetric">€45.00</div>
+            <div id="reportContent" style="display: contents;">
+                <div class="kpi-column">
+                    <div class="results-box">
+                        <div class="kpi-title">ROI & Efficienza</div>
+                        <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
+                        <div class="kpi-metric" id="roiMetric">€45.00</div>
+                        
+                        <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
+                        <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p>
+                    </div>
                     
-                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
-                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p>
+                    <div class="results-box">
+                        <div class="kpi-title">Stato Analisi</div>
+                        <ul class="kpi-list" id="summaryList">
+                            <li>• Focus Clausole Critiche: Liability & Indemnification</li>
+                            <li>• Clausole Controllate: 2 (MVP)</li>
+                            <li>• Rischio Complessivo: **Medio**</li>
+                            <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+                            <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
+                        </ul>
+                    </div>
                 </div>
-                
-                <div class="results-box">
-                    <div class="kpi-title">Stato Analisi</div>
-                    <ul class="kpi-list" id="summaryList">
-                        <li>• Focus Clausole Critiche: Liability & Indemnification</li>
-                        <li>• Clausole Controllate: 2 (MVP)</li>
-                        <li>• Rischio Complessivo: **Medio**</li>
-                        <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
-                        <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
-                    </ul>
-                </div>
-            </div>
 
-            <div class="results-box" style="padding: 25px;">
-                
-                <div id="reportDetailContent">
+                <div class="results-box" id="detailBox">
                     <div class="kpi-title">Report Dettaglio Rischi</div>
                     <div id="reportDetail">
                         <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
                     </div>
                 </div>
-
-                <div id="chartsContainer" style="display: none;">
-                    <p>Qui verranno visualizzati i tuoi grafici! (Contenuto non rovinato)</p>
-                </div>
             </div>
+
+            <div id="chartContent">
+                <p class="kpi-title" style="margin-top: 0;">Analisi Grafica dei Rischi</p>
+                <p style="font-size: 1em; color: var(--text-light); margin-top: 20px;">
+                    Qui andranno i tuoi grafici (es. grafico a torta per la distribuzione dei rischi, istogramma, ecc.).
+                    Per ora, questa è solo un'area segnaposto per mantenere il codice pulito e funzionale.
+                </p>
+                </div>
             
             <button id="resetButton" class="reset-button" style="grid-column: 1 / 3;">
                 Analizza un altro file
@@ -333,123 +381,138 @@
 </body>
 
 <script>
-    
     /* ---------------------------------------------------------------------- */
     /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
+    const IS_USER_LOGGED_IN = true; 
+    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
+
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
     const analyzeButton = document.getElementById('analyzeButton'); 
     const statusFeedback = document.getElementById('statusFeedback');
     const statusText = document.getElementById('statusText');
+    const spinner = document.getElementById('spinner');
 
+    // RIFERIMENTI AI NUOVI ELEMENTI DI CARICAMENTO
+    const uploadIcon = document.getElementById('uploadIcon');
+    const uploadText = document.getElementById('uploadText');
+
+    // RIFERIMENTI AI CONTENITORI
     const uploadContainer = document.getElementById('uploadContainer');
     const reportContainer = document.getElementById('reportContainer');
     const resetButton = document.getElementById('resetButton'); 
+    const reportNav = document.getElementById('reportNav'); // Nuova barra
 
-    const defaultUploadIcon = document.getElementById('defaultUploadIcon');
-    const loadingUploadIcon = document.getElementById('loadingUploadIcon');
-    const uploadTextDefaults = document.querySelectorAll('.upload-text-default');
-    const uploadTextLoadings = document.querySelectorAll('.upload-text-loading');
-
+    // RIFERIMENTI AI CONTENUTI DEL REPORT
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    const reportTab = document.getElementById('reportTab');
-    const chartsTab = document.getElementById('chartsTab');
-    const reportDetailContent = document.getElementById('reportDetailContent');
-    const chartsContainer = document.getElementById('chartsContainer');
+    // RIFERIMENTI REPORT/GRAFICO
+    const navReport = document.getElementById('navReport');
+    const navChart = document.getElementById('navChart');
+    const reportContent = document.getElementById('reportContent');
+    const chartContent = document.getElementById('chartContent');
 
-    let lastReportView = 'report'; 
+    // Stato per Report/Grafico (iniziale: 'report')
+    let currentReportView = 'report'; 
 
     analyzeButton.textContent = 'Carica il tuo file';
 
-    /* ---------------------------------------------------------------------- */
-    /* FUNZIONI DI VISUALIZZAZIONE E STATO */
-    /* ---------------------------------------------------------------------- */
+    // ----------------------------------------------------------------------
+    // FUNZIONI DI VISUALIZZAZIONE
+    // ----------------------------------------------------------------------
     
+    // Funzione per mostrare l'area di upload e nascondere il report
     function showUploadLayout() {
         uploadContainer.style.display = 'flex'; 
+        reportNav.style.display = 'none'; // Nasconde la nav
         reportContainer.style.display = 'none';
         
-        showStatus('In attesa di caricamento...', 'default', false);
+        // Resetta l'input file e nasconde il feedback di stato
+        showStatus('In attesa di caricamento...', 'processing', false);
         statusFeedback.style.display = 'none'; 
         fileInput.value = '';
 
-        // Resetta l'area di upload al suo stato predefinito
-        uploadArea.classList.remove('loading');
-        defaultUploadIcon.style.display = 'block';
-        loadingUploadIcon.style.display = 'none';
-        uploadTextDefaults.forEach(el => el.style.display = 'block');
-        uploadTextLoadings.forEach(el => el.style.display = 'none');
-        analyzeButton.style.display = 'block'; 
+        // Reset Caricamento
+        analyzeButton.style.display = 'block'; // Mostra il bottone verde
+        uploadText.style.display = 'block'; // Mostra il testo di "Carica qui..."
+        uploadIcon.classList.remove('rotate-paper'); // Rimuove la rotazione
     }
 
+    // Funzione per mostrare il report e nascondere l'upload
     function showReportLayout() {
         uploadContainer.style.display = 'none'; 
+        reportNav.style.display = 'flex'; // Mostra la nav
         reportContainer.style.display = 'grid'; 
-        // Assicurati che il tab attivo sia quello corretto quando si mostra il layout del report
-        switchReportView(lastReportView);
+        // Assicura che venga visualizzato il contenuto corretto in base allo stato
+        updateReportView(currentReportView);
     }
     
+    // Al caricamento della pagina, mostra solo l'upload
     window.onload = showUploadLayout;
     
-    function showStatus(message, type = 'processing', showBar = true) {
+    // ----------------------------------------------------------------------
+    // FUNZIONI DI STATO E RISULTATI (AGGIORNATA PER LA NUOVA BARRA E ROTAZIONE)
+    // ----------------------------------------------------------------------
+
+    function showStatus(message, type = 'processing', showSpinner = true) {
         
+        // Se si passa a un'analisi o a un errore, assicurati che l'area di upload sia visibile
         if (type !== 'success') {
             uploadContainer.style.display = 'flex';
+            reportNav.style.display = 'none';
             reportContainer.style.display = 'none';
         }
 
-        // Gestione generale del feedback di stato (sotto il bottone)
-        statusFeedback.style.display = showBar ? 'flex' : 'none'; 
+        statusFeedback.style.display = 'flex'; // Usiamo flex per il nuovo layout interno
         statusText.textContent = message;
         
+        // Gestione della VISIBILITÀ e STILE
         const loadingBar = statusFeedback.querySelector('.loading-bar-container');
         const processingContent = statusFeedback.querySelector('.processing-content');
 
-        // Reset
-        statusFeedback.className = ``;
-        loadingBar.style.display = 'none';
-        processingContent.style.display = 'none';
-        uploadArea.classList.remove('loading');
-        analyzeButton.style.display = 'block';
-
         if (type === 'processing') {
-            // Modalità Analisi/Caricamento: Attiva barra e spinner
+            // Modalità Analisi/Caricamento (Mostra Barra, Spinner, Rotazione Icona, NASCONDE Testo e Bottone)
+            statusFeedback.className = ``; // Rimuovi classi di errore/successo per lo stato generico
             loadingBar.style.display = 'block';
             processingContent.style.display = 'flex';
-            statusFeedback.style.backgroundColor = '#f7f7f7'; 
-            statusFeedback.style.border = '1px solid #ddd'; 
+            spinner.style.display = 'none'; // Il tuo spinner di testo lo mantengo nascosto per usare la rotazione sull'icona 📄
+            statusFeedback.style.backgroundColor = '#f7f7f7'; // Reset colore di sfondo
+            statusFeedback.style.border = '1px solid #ddd'; // Reset bordo
             statusText.style.color = 'var(--text-dark)';
 
-            // Logica per l'area di upload: animazione icona, nasconde testo default e bottone
-            uploadArea.classList.add('loading');
-            defaultUploadIcon.style.display = 'none';
-            loadingUploadIcon.style.display = 'block';
-            uploadTextDefaults.forEach(el => el.style.display = 'none');
-            uploadTextLoadings.forEach(el => el.style.display = 'block');
-            analyzeButton.style.display = 'none'; 
-            
-        } else if (type === 'error') {
-            // Modalità Errore: solo testo errore, reset area di upload
-            statusFeedback.className = `status-error`;
-            processingContent.style.display = 'flex';
-            statusText.style.color = 'var(--danger-color)'; 
-            statusFeedback.style.backgroundColor = '#fbe6e6'; 
-            statusFeedback.style.border = '1px solid var(--danger-color)';
+            // MODIFICHE RICHIESTE:
+            analyzeButton.style.display = 'none'; // NASCONDI BOTTONE VERDE
+            uploadText.style.display = 'none'; // NASCONDI TESTO "Carica qui..."
+            uploadIcon.classList.add('rotate-paper'); // INIZIA ROTAZIONE
 
-            defaultUploadIcon.style.display = 'block';
-            loadingUploadIcon.style.display = 'none';
-            uploadTextDefaults.forEach(el => el.style.display = 'block');
-            uploadTextLoadings.forEach(el => el.style.display = 'none');
-            
+        } else if (type === 'error') {
+            // Modalità Errore (Nasconde Barra, Mostra Solo Testo Errore, Reset elementi)
+            statusFeedback.className = `status-error`;
+            loadingBar.style.display = 'none';
+            processingContent.style.display = 'flex';
+            spinner.style.display = 'none';
+            statusText.style.color = 'var(--danger-color)'; // Colore del testo per errore
+
+            // Reset Caricamento
+            analyzeButton.style.display = 'block'; // Mostra il bottone verde
+            uploadText.style.display = 'block'; // Mostra il testo di "Carica qui..."
+            uploadIcon.classList.remove('rotate-paper'); // Rimuove la rotazione
+
         } else if (type === 'success') {
-            // Modalità Successo: Nasconde feedback, mostra report
-            statusFeedback.style.display = 'none'; 
+            // Modalità Successo (Nasconde tutto, viene mostrato solo il report)
+            statusFeedback.className = `status-success`;
+            loadingBar.style.display = 'none';
+            processingContent.style.display = 'none'; // Nascondi il contenuto di processing
+            
+            // Il reset della rotazione e il bottone viene gestito dalla showReportLayout, ma lo metto qui per sicurezza
+            analyzeButton.style.display = 'block'; 
+            uploadText.style.display = 'block';
+            uploadIcon.classList.remove('rotate-paper');
         }
 
         // Reset risultati statici
@@ -462,14 +525,15 @@
                 <li>• Rischio Complessivo: **Medio**</li>
                 <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
                 <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
-              `;
+            `;
+            document.getElementById('riskScoreItem').textContent = 'Indice di Rischio: N/D / 100';
+            document.getElementById('riskMotivationItem').innerHTML = 'Motivazione: Carica un file per l\'analisi.';
             reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
         }
     }
 
     function displayResult(result) {
         showReportLayout(); 
-        showStatus('', 'success', false); 
 
         const { 
             nome_documento, 
@@ -504,131 +568,88 @@
 
         // --- COLONNA REPORT DETTAGLIO ---
         let detailHtml = `
-            <div class="kpi-title">Report Dettaglio Rischi</div>
-            ${analisi_clausole.map(clausola => `
-                <div class="clausola-box ${clausola.rischio.replace(' ', '-')}">
-                    <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
-                    ${clausola.rischio === 'NON TROVATA' ? 'Clausola non trovata nel documento.' : clausola.testo_clausola_esatta.substring(0, 100) + '...'}
+            <div id="reportDetailContent">
+                <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
+                ${analisi_clausole.map(clausola => `
+                    <div class="clausola-box ${clausola.rischio.replace(' ', '-')}">
+                        <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
+                        ${clausola.rischio === 'NON TROVATA' ? 'Clausola non trovata nel documento.' : clausola.testo_clausola_esatta.substring(0, 100) + '...'}
+                    </div>
+                `).join('')}
+                
+                <div class="ai-suggestion-box">
+                    <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
+                    <p style="font-size: 0.9em; margin-bottom: 5px;">
+                        Il documento presenta un livello di rischio complessivo **${riskSummaryText} (${rischio_complessivo_percentuale}/100)**.
+                    </p>
+                    <p style="font-size: 0.9em; font-weight: 600; color: var(--brand-color); margin-top: 10px; margin-bottom: 5px;">
+                        Azioni Consigliate:
+                    </p>
+                    <p style="font-size: 0.9em; margin-top: 0;">${suggerimenti_ai}</p>
+                    <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">Riassunto: ${riassunto_breve}</p>
                 </div>
-            `).join('')}
-        `;
-        
-        // Sintesi Finale e Suggerimenti AI
-        detailHtml += `
-            <div class="ai-suggestion-box">
-                <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
-                <p style="font-size: 0.9em; margin-bottom: 5px;">
-                    Il documento presenta un livello di rischio complessivo **${riskSummaryText} (${rischio_complessivo_percentuale}/100)**.
-                </p>
-                <p style="font-size: 0.9em; font-weight: 600; color: var(--brand-color); margin-top: 10px; margin-bottom: 5px;">
-                    Azioni Consigliate:
-                </p>
-                <p style="font-size: 0.9em; margin-top: 0;">${suggerimenti_ai}</p>
-                <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">Riassunto: ${riassunto_breve}</p>
             </div>
         `;
 
         reportDetail.innerHTML = detailHtml;
+
+        statusFeedback.style.display = 'none'; 
     }
     
-    async function uploadFile(file) {
-        const formData = new FormData();
-        formData.append('file', file); 
+    // ----------------------------------------------------------------------
+    // FUNZIONE DI SWITCH REPORT/GRAFICO
+    // ----------------------------------------------------------------------
+
+    function updateReportView(view) {
+        currentReportView = view;
         
-        showStatus('Caricamento del file...', 'processing', true); 
-        
-        try {
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData,
-            });
-
-            // Simulazione dei dati di successo se non hai un backend reale attivo
-            const dummyResult = {
-                nome_documento: file.name,
-                risparmio_stimato_eur: 55.00,
-                tempo_risparmiato_min: 15,
-                tempo_lettura_avvocato_stimato_min: 25,
-                rischio_complessivo_percentuale: 60,
-                motivazione_rischio_complessivo: "Elevato rischio sulla limitazione di responsabilità e l'assenza di clausola di indennizzo esplicita.",
-                riassunto_breve: "Il documento è stato analizzato. Vengono evidenziati rischi su indennizzo e limiti di responsabilità.",
-                suggerimenti_ai: "Si consiglia l'inserimento di clausole più chiare su indennizzo e un ribilanciamento delle esenzioni di responsabilità.",
-                analisi_clausole: [
-                    {
-                        tipo: "Clausola di Limitazione di Responsabilità",
-                        rischio: "HIGH",
-                        testo_clausola_esatta: "La responsabilità del fornitore è limitata a 50.000 euro o al totale delle somme pagate dal cliente, a seconda di quale sia inferiore, e non copre danni indiretti o consequenziali.",
-                        suggerimento: "Il limite è troppo basso. Si raccomanda di negoziare un massimale pari al 150% del valore del contratto o almeno 100.000 euro."
-                    },
-                    {
-                        tipo: "Clausola di Indennizzo",
-                        rischio: "NON TROVATA",
-                        testo_clausola_esatta: "Clausola non trovata nel documento.",
-                        suggerimento: "L'assenza di una clausola di indennizzo espone la parte a maggiori rischi legali in caso di reclami da terze parti."
-                    },
-                    {
-                        tipo: "Clausola di Penale per Ritardo",
-                        rischio: "LOW",
-                        testo_clausola_esatta: "Il Fornitore pagherà una penale pari allo 0.5% del valore del servizio per ogni giorno di ritardo, fino a un massimo del 5% del valore totale.",
-                        suggerimento: "Clausola standard e accettabile."
-                    }
-                ]
-            };
-            
-            // In un'applicazione reale, useresti:
-            // const data = await response.json();
-            // if (response.ok && data.status === 'success') {
-            //     displayResult(data.result);
-            // } else {
-            //     showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
-            // }
-
-            // *** SE HAI UN BACKEND VERO ATTIVO, DECOMMENTA IL BLOCCO SOPRA E CANCELLA QUESTO BLOCCO SIMULATO: ***
-            if (response.ok) {
-                // Se la risposta è OK, assumiamo che l'analisi sia andata a buon fine per la DEMO
-                displayResult(dummyResult); 
-            } else {
-                 const data = await response.json().catch(() => ({ message: `Errore generico ${response.status}` }));
-                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
-            }
-            // ***************************************************************************************************
-
-
-        } catch (error) {
-            // Questo errore è catturato se il server non risponde affatto (es. backend non attivo)
-            showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
-        }
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* LOGICA DI NAVIGAZIONE REPORT / GRAFICI */
-    /* ---------------------------------------------------------------------- */
-
-    function switchReportView(view) {
-        lastReportView = view; 
+        // Rimuove la classe 'active' da entrambi e la aggiunge solo a quello selezionato
+        navReport.classList.remove('active');
+        navChart.classList.remove('active');
 
         if (view === 'report') {
-            reportTab.classList.add('active');
-            chartsTab.classList.remove('active');
-            reportDetailContent.style.display = 'block';
-            chartsContainer.style.display = 'none';
-        } else { // view === 'charts'
-            chartsTab.classList.add('active');
-            reportTab.classList.remove('active');
-            reportDetailContent.style.display = 'none';
-            chartsContainer.style.display = 'flex'; 
-            
-            if (!chartsContainer.dataset.initialized) {
-                 chartsContainer.innerHTML = '<p style="font-size: 1.1em; font-weight: 600;">Area Grafici: Visualizzazioni analitiche in sviluppo. Tornare al Report Dettaglio.</p>';
-                 chartsContainer.dataset.initialized = 'true';
-            }
+            navReport.classList.add('active');
+            reportContent.style.display = 'contents'; // Per mantenere la grid-layout
+            chartContent.style.display = 'none';
+        } else if (view === 'chart') {
+            navChart.classList.add('active');
+            reportContent.style.display = 'none';
+            chartContent.style.display = 'block'; // Lo mostro come block
         }
+    }
+    
+    // Funzione fittizia di upload (simulazione)
+    async function uploadFile(file) {
+        // Avvia la nuova visualizzazione di caricamento
+        showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
+        
+        // Simulo la chiamata API
+        await new Promise(resolve => setTimeout(resolve, 3000)); 
+
+        const mockResult = { 
+            nome_documento: file.name, 
+            risparmio_stimato_eur: 55.50, 
+            tempo_risparmiato_min: 15, 
+            analisi_clausole: [
+                { tipo: 'Limitation of Liability', rischio: 'HIGH', testo_clausola_esatta: 'Except in cases of wilful misconduct or gross negligence, the total liability of Vendor under this Agreement shall not exceed the fees paid by Customer in the six months preceding the event giving rise to the claim.' },
+                { tipo: 'Indemnification', rischio: 'MEDIUM', testo_clausola_esatta: 'Customer shall indemnify, defend and hold harmless the Vendor from and against any and all claims, damages, losses, liabilities, costs and expenses arising out of or in connection with any third-party claim related to Customer’s use of the Services.' },
+                { tipo: 'Governing Law', rischio: 'LOW', testo_clausola_esatta: 'This Agreement shall be governed by and construed in accordance with the laws of Italy.' },
+                { tipo: 'Termination', rischio: 'NON TROVATA', testo_clausola_esatta: '' }
+            ],
+            riassunto_breve: 'Il documento è un Contratto di Servizi IT standard. Rischio principale nella clausola di Limitazione di Responsabilità a favore del fornitore.',
+            tempo_lettura_avvocato_stimato_min: 60,
+            rischio_complessivo_percentuale: 55,
+            motivazione_rischio_complessivo: 'Il punteggio è stato aumentato a causa di una limitazione di responsabilità troppo restrittiva (HIGH risk) e una clausola di indennizzo sbilanciata (MEDIUM risk).',
+            suggerimenti_ai: 'Si consiglia vivamente di rinegoziare la clausola di *Limitation of Liability* per includere un cap più alto o eccezioni per violazione di dati. La clausola di *Indemnification* dovrebbe essere bidirezionale.'
+        };
+        
+        displayResult(mockResult);
     }
 
 
-    /* ---------------------------------------------------------------------- */
-    /* GESTORE DI EVENTI PRINCIPALE */
-    /* ---------------------------------------------------------------------- */
+    // ----------------------------------------------------------------------
+    // GESTORE DI EVENTI PRINCIPALE
+    // ----------------------------------------------------------------------
     
     const ctaAction = (e) => {
         e.preventDefault();
@@ -641,19 +662,16 @@
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-             uploadFile(file);
+              uploadFile(file);
         }
     });
     
+    // Evento Reset
     resetButton.addEventListener('click', showUploadLayout);
 
-    // Event listeners per i tab Report/Grafici
-    reportTab.addEventListener('click', () => switchReportView('report'));
-    chartsTab.addEventListener('click', () => switchReportView('charts'));
-
-    // Assicurati che all'avvio solo il contenitore del report sia visibile
-    reportDetailContent.style.display = 'block';
-    chartsContainer.style.display = 'none';
+    // Eventi Navigazione Report/Grafico
+    navReport.addEventListener('click', () => updateReportView('report'));
+    navChart.addEventListener('click', () => updateReportView('chart'));
 
 </script>
 </html>
