@@ -68,6 +68,7 @@
             grid-template-columns: 1fr 2fr; 
             gap: 30px; 
             margin-top: -10px; 
+            position: relative; /* Per posizionare la nav bar */
         }
         
         /* Stili per le colonne originali */
@@ -80,7 +81,21 @@
             margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
             justify-content: center; align-items: center; cursor: pointer; transition: opacity 0.2s;
         }
-        .upload-icon { font-size: 4.5em; color: var(--brand-color); }
+        
+        /* Nuovi stili per l'icona e il testo di caricamento nell'area di upload */
+        .upload-icon { 
+            font-size: 4.5em; 
+            color: var(--brand-color); 
+            display: block;
+        }
+        .upload-area.loading .upload-icon {
+            animation: spin 1.5s linear infinite; /* Applica l'animazione di rotazione */
+        }
+        .upload-area .upload-text-default { display: block; }
+        .upload-area.loading .upload-text-default { display: none; }
+        .upload-area .upload-text-loading { display: none; }
+        .upload-area.loading .upload-text-loading { display: block; }
+
         #fileInput { display: none; }
         .results-box {
             padding: 25px; border: 1px solid #ddd; background-color: #f7f7f7;
@@ -102,7 +117,7 @@
         .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
         .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
         
-        /* NUOVI STILI PER LA BARRA DI CARICAMENTO */
+        /* STILI PER LA BARRA DI CARICAMENTO (SOTTO L'UPLOAD) */
         #statusFeedback {
             margin-top: 25px; 
             padding: 15px; 
@@ -110,10 +125,9 @@
             font-weight: 600; 
             text-align: center; 
             display: none;
-            /* Flexbox per allineare gli elementi */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            background-color: #f7f7f7; 
+            border: 1px solid #ddd;
         }
         
         .status-error { background-color: #fbe6e6; color: var(--danger-color); }
@@ -129,6 +143,7 @@
             animation: spin 1s linear infinite; 
             display: inline-block; 
             margin-right: 15px; /* Spazio a destra del testo */
+            flex-shrink: 0;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -166,7 +181,6 @@
             margin-bottom: 5px;
         }
 
-
         .ai-suggestion-box {
             padding: 15px;
             border: 1px dashed var(--brand-color);
@@ -194,6 +208,52 @@
         .reset-button:hover { 
             background-color: #337ab7; 
         }
+
+        /* NUOVI STILI PER LA BARRA DI NAVIGAZIONE DEL REPORT */
+        .report-nav-bar {
+            grid-column: 1 / 3; /* Occupa tutta la larghezza */
+            display: flex;
+            background-color: #f0f0f0; /* Sfondo della barra */
+            border-bottom: 1px solid #ddd;
+            border-radius: var(--border-radius) var(--border-radius) 0 0; /* Bordi arrotondati solo in alto */
+            overflow: hidden; /* Per i bordi arrotondati */
+            margin-bottom: 20px; /* Spazio tra la barra e il contenuto del report */
+        }
+        .report-nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-right: 1px solid #eee; /* Separatore tra le voci */
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .report-nav-item:last-child {
+            border-right: none;
+        }
+        .report-nav-item:hover {
+            background-color: #e0e0e0;
+        }
+        .report-nav-item.active {
+            background-color: var(--brand-color);
+            color: white;
+        }
+
+        /* Contenitore per i grafici (inizialmente nascosto) */
+        #chartsContainer {
+            display: none;
+            min-height: 200px; /* Altezza minima per i grafici */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        /* Stili per il contenuto del report vero e proprio */
+        #reportDetailContent {
+            display: block; /* Visibile di default per "Report" */
+        }
+
     </style>
 </head>
 <body>
@@ -219,14 +279,31 @@
                 <input type="file" id="fileInput" accept="application/pdf">
                 
                 <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📄</div>
-                    <p style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
-                    <p style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
+                    <svg id="defaultUploadIcon" class="upload-icon" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                    </svg>
+                    <svg id="loadingUploadIcon" class="upload-icon" style="display:none;" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <path d="M12 2v10"></path>
+                        <path d="M5 9l-3 3 3 3"></path>
+                        <path d="M19 9l3 3-3 3"></path>
+                    </svg>
+
+                    <p class="upload-text-default" style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
+                    <p class="upload-text-default" style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
+
+                    <p class="upload-text-loading" style="font-weight: 600; color: var(--brand-color); display: none;">Caricamento in corso...</p>
+                    <p class="upload-text-loading" style="font-size: 0.9em; color: var(--text-light); display: none;">Analisi AI in preparazione. Attendere prego.</p>
                 </div>
                 
                 <button class="cta-button-middle" id="analyzeButton">Carica il tuo file</button>
                 
-                <div id="statusFeedback" class="status-processing" style="display: none; flex-direction: column; background-color: #f7f7f7; border: 1px solid #ddd;">
+                <div id="statusFeedback" style="display: none; flex-direction: column; background-color: #f7f7f7; border: 1px solid #ddd;">
                     
                     <div class="processing-content">
                         <span id="spinner" class="spinner"></span> 
@@ -242,7 +319,11 @@
         </div>
 
         <div id="reportContainer" class="report-columns-layout">
-            
+            <div class="report-nav-bar">
+                <div class="report-nav-item active" id="reportTab">Report Dettaglio</div>
+                <div class="report-nav-item" id="chartsTab">Grafici</div>
+            </div>
+
             <div class="kpi-column">
                 <div class="results-box">
                     <div class="kpi-title">ROI & Efficienza</div>
@@ -266,9 +347,15 @@
             </div>
 
             <div class="results-box" style="padding: 25px;">
-                <div class="kpi-title">Report Dettaglio Rischi</div>
-                <div id="reportDetail">
-                    <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
+                <div id="reportDetailContent">
+                    <div class="kpi-title">Report Dettaglio Rischi</div>
+                    <div id="reportDetail">
+                        <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
+                    </div>
+                </div>
+
+                <div id="chartsContainer" style="display: none;">
+                    <p>Qui verranno visualizzati i tuoi grafici!</p>
                 </div>
             </div>
             
@@ -298,17 +385,33 @@
     const statusText = document.getElementById('statusText');
     const spinner = document.getElementById('spinner');
 
-    // RIFERIMENTI AI CONTENITORI
+    // RIFERIMENTI AI CONTENITORI PRINCIPALI
     const uploadContainer = document.getElementById('uploadContainer');
     const reportContainer = document.getElementById('reportContainer');
     const resetButton = document.getElementById('resetButton'); 
+
+    // RIFERIMENTI AGLI ELEMENTI NELL'AREA DI UPLOAD
+    const defaultUploadIcon = document.getElementById('defaultUploadIcon');
+    const loadingUploadIcon = document.getElementById('loadingUploadIcon');
+    const uploadTextDefaults = document.querySelectorAll('.upload-text-default');
+    const uploadTextLoadings = document.querySelectorAll('.upload-text-loading');
+
 
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
+    // NUOVI RIFERIMENTI PER NAVIGAZIONE REPORT/GRAFICI
+    const reportTab = document.getElementById('reportTab');
+    const chartsTab = document.getElementById('chartsTab');
+    const reportDetailContent = document.getElementById('reportDetailContent');
+    const chartsContainer = document.getElementById('chartsContainer');
+
     analyzeButton.textContent = 'Carica il tuo file';
+
+    // Variabile per salvare l'ultima vista selezionata (report o grafici)
+    let lastReportView = 'report'; 
 
     // ----------------------------------------------------------------------
     // FUNZIONI DI VISUALIZZAZIONE
@@ -323,19 +426,33 @@
         showStatus('In attesa di caricamento...', 'processing', false);
         statusFeedback.style.display = 'none'; 
         fileInput.value = '';
+
+        // Resetta l'area di upload al suo stato predefinito
+        uploadArea.classList.remove('loading');
+        defaultUploadIcon.style.display = 'block';
+        loadingUploadIcon.style.display = 'none';
+        uploadTextDefaults.forEach(el => el.style.display = 'block');
+        uploadTextLoadings.forEach(el => el.style.display = 'none');
+        analyzeButton.style.display = 'block'; // Mostra di nuovo il bottone "Carica il tuo file"
     }
 
     // Funzione per mostrare il report e nascondere l'upload
     function showReportLayout() {
         uploadContainer.style.display = 'none'; 
         reportContainer.style.display = 'grid'; 
+        // Assicurati che il tab attivo sia quello corretto quando si mostra il layout del report
+        if (lastReportView === 'report') {
+            switchReportView('report');
+        } else {
+            switchReportView('charts');
+        }
     }
     
     // Al caricamento della pagina, mostra solo l'upload
     window.onload = showUploadLayout;
     
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E RISULTATI (AGGIORNATA PER LA NUOVA BARRA)
+    // FUNZIONI DI STATO E RISULTATI (AGGIORNATA PER LA NUOVA BARRA E ICONA)
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
@@ -355,31 +472,48 @@
 
         if (type === 'processing') {
             // Modalità Analisi/Caricamento (Mostra Barra e Spinner)
-            statusFeedback.className = ``; // Rimuovi classi di errore/successo per lo stato generico
+            statusFeedback.className = ``; 
             loadingBar.style.display = 'block';
             processingContent.style.display = 'flex';
             spinner.style.display = 'inline-block';
-            statusFeedback.style.backgroundColor = '#f7f7f7'; // Reset colore di sfondo
-            statusFeedback.style.border = '1px solid #ddd'; // Reset bordo
+            statusFeedback.style.backgroundColor = '#f7f7f7'; 
+            statusFeedback.style.border = '1px solid #ddd'; 
             statusText.style.color = 'var(--text-dark)';
 
+            // Nuova logica per l'area di upload durante il caricamento
+            uploadArea.classList.add('loading');
+            defaultUploadIcon.style.display = 'none';
+            loadingUploadIcon.style.display = 'block';
+            uploadTextDefaults.forEach(el => el.style.display = 'none');
+            uploadTextLoadings.forEach(el => el.style.display = 'block');
+            analyzeButton.style.display = 'none'; // Nasconde il bottone verde
+            
         } else if (type === 'error') {
             // Modalità Errore (Nasconde Barra, Mostra Solo Testo Errore)
             statusFeedback.className = `status-error`;
             loadingBar.style.display = 'none';
             processingContent.style.display = 'flex';
             spinner.style.display = 'none';
-            statusText.style.color = 'var(--danger-color)'; // Colore del testo per errore
+            statusText.style.color = 'var(--danger-color)'; 
 
+            // Resetta l'area di upload in caso di errore
+            uploadArea.classList.remove('loading');
+            defaultUploadIcon.style.display = 'block';
+            loadingUploadIcon.style.display = 'none';
+            uploadTextDefaults.forEach(el => el.style.display = 'block');
+            uploadTextLoadings.forEach(el => el.style.display = 'none');
+            analyzeButton.style.display = 'block'; // Mostra di nuovo il bottone
+            
         } else if (type === 'success') {
             // Modalità Successo (Nasconde tutto, viene mostrato solo il report)
             statusFeedback.className = `status-success`;
             loadingBar.style.display = 'none';
-            processingContent.style.display = 'none'; // Nascondi il contenuto di processing
-            
+            processingContent.style.display = 'none'; 
+
+            // L'area di upload viene completamente nascosta in showReportLayout
         }
 
-        // Reset risultati statici
+        // Reset risultati statici (non cambia)
         if (type !== 'success') {
             roiMetric.textContent = '€45.00'; 
             timeMetric.textContent = '12 Minuti'; 
@@ -398,6 +532,7 @@
 
     function displayResult(result) {
         showReportLayout(); 
+        showStatus('', 'success', false); // Nasconde la barra di caricamento
 
         const { 
             nome_documento, 
@@ -432,7 +567,7 @@
 
         // --- COLONNA REPORT DETTAGLIO ---
         let detailHtml = `
-            <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
+            <div class="kpi-title">Report Dettaglio Rischi</div>
             ${analisi_clausole.map(clausola => `
                 <div class="clausola-box ${clausola.rischio.replace(' ', '-')}">
                     <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
@@ -457,20 +592,15 @@
         `;
 
         reportDetail.innerHTML = detailHtml;
-
-        statusFeedback.style.display = 'none'; 
     }
     
     async function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file); 
         
-        uploadContainer.style.display = 'flex'; 
-        reportContainer.style.display = 'none';
-
-        // Avvia la nuova visualizzazione di caricamento
-        showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
-
+        // Nasconde il bottone verde e attiva la visualizzazione di caricamento nell'area di upload
+        showStatus('Caricamento del file...', 'processing', true); 
+        
         try {
             const response = await fetch('/analyze', {
                 method: 'POST',
@@ -486,6 +616,33 @@
             }
         } catch (error) {
             showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
+        }
+    }
+
+    // ----------------------------------------------------------------------
+    // LOGICA DI NAVIGAZIONE REPORT / GRAFICI
+    // ----------------------------------------------------------------------
+
+    function switchReportView(view) {
+        lastReportView = view; // Salva la vista corrente
+
+        if (view === 'report') {
+            reportTab.classList.add('active');
+            chartsTab.classList.remove('active');
+            reportDetailContent.style.display = 'block';
+            chartsContainer.style.display = 'none';
+        } else { // view === 'charts'
+            chartsTab.classList.add('active');
+            reportTab.classList.remove('active');
+            reportDetailContent.style.display = 'none';
+            chartsContainer.style.display = 'flex'; // Usiamo flex per centrare il contenuto
+            // Qui potresti inizializzare i tuoi grafici se non sono già stati creati
+            if (!chartsContainer.dataset.initialized) {
+                 chartsContainer.innerHTML = '<p>Caricamento grafici in corso...</p>'; // Messaggio temporaneo
+                 // In un'applicazione reale, qui richiameresti una funzione per disegnare i grafici
+                 // Esempio: initializeCharts(data);
+                 chartsContainer.dataset.initialized = 'true';
+            }
         }
     }
 
@@ -509,8 +666,11 @@
         }
     });
     
-    // Evento Reset
     resetButton.addEventListener('click', showUploadLayout);
+
+    // Event listeners per i tab Report/Grafici
+    reportTab.addEventListener('click', () => switchReportView('report'));
+    chartsTab.addEventListener('click', () => switchReportView('charts'));
 
 </script>
 </html>
