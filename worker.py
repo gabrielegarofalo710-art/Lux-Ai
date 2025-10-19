@@ -13,11 +13,10 @@ def get_gemini_client():
     if not api_key:
         raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
     
-    # Non è più necessario chiamare genai.configure se usi genai.Client(api_key=...)
+    # Restituisce il client usando la chiave
     return genai.Client(api_key=api_key)
 
 # --- Definizione dello Schema JSON per l'Output (Cruciale per la dinamicità) ---
-# Questo garantisce che Gemini restituisca un formato JSON che il tuo frontend può leggere.
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -47,15 +46,27 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
     client = None
     uploaded_file = None
     
+    # ⚠️ DEBUG: Conferma l'inizio del task
+    print(f"DEBUG: Avvio task Celery per file: {temp_path} (User: {user_id})")
+    
     try:
         # 1. Ottieni il Client AI
         client = get_gemini_client()
+        
+        # ⚠️ CONTROLLO CRITICO: Il file temporaneo esiste?
+        # A volte, Celery non vede il file scritto da FastAPI se i due servizi non sono nello stesso container
+        if not os.path.exists(temp_path):
+             # Solleva un errore chiaro invece di fallire in modo incomprensibile
+             raise FileNotFoundError(f"FATAL: File PDF non trovato nel percorso temporaneo: {temp_path}. I servizi non condividono /tmp?")
+
 
         # 2. Carica il file su Gemini (Passando il path corretto da /tmp)
         self.update_state(state='STARTED', meta={'progress': 20, 'message': 'Caricamento file AI su Gemini...'})
         
         # Questa è la funzione che legge il file locale e lo invia a Google AI
         uploaded_file = client.files.upload(file=temp_path)
+        print(f"DEBUG: File {os.path.basename(temp_path)} caricato con successo su Gemini come {uploaded_file.name}")
+
 
         # 3. Prompt focalizzato
         prompt = f"""
@@ -87,12 +98,17 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
 
         # 6. Pulizia del file da Gemini in caso di SUCCESSO (CRITICO!)
         client.files.delete(name=uploaded_file.name)
+        print(f"DEBUG: Pulizia file Gemini completata: {uploaded_file.name}")
 
         # 7. Restituisce il risultato
         return {"result": json_result, "temp_path": temp_path, "status": "SUCCESS"}
 
+    except FileNotFoundError as e:
+        error_msg = str(e)
+        raise self.raise_for_status(error_msg, status='FAILURE')
+        
     except APIError as e:
-        error_msg = f"Errore API Gemini (chiave/file): {e}"
+        error_msg = f"Errore API Gemini (Verifica chiave): {e}"
         # Gestione della pulizia in caso di fallimento
         if uploaded_file and client:
             try:
@@ -101,7 +117,7 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
         raise self.raise_for_status(error_msg, status='FAILURE')
         
     except json.JSONDecodeError as e:
-        error_msg = f"Errore di decodifica JSON dall'AI. L'output AI non era JSON valido: {output_text[:100]}..."
+        error_msg = f"Errore di decodifica JSON dall'AI. Output: {output_text[:100]}..."
         if uploaded_file and client:
             try:
                 client.files.delete(name=uploaded_file.name)
@@ -109,7 +125,7 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
         raise self.raise_for_status(error_msg, status='FAILURE')
         
     except Exception as e:
-        error_msg = f"WORKER FATAL ERROR: {e}"
+        error_msg = f"WORKER FATAL ERROR (Generico): {e}"
         # Pulizia in caso di qualsiasi altro errore
         if uploaded_file and client:
             try:
