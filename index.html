@@ -92,7 +92,6 @@
             display: inline-block; margin-left: 10px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Rimuoviamo la sezione trust per la MVP accessibile */
         .trust-section { display: none; } 
     </style>
 </head>
@@ -169,7 +168,6 @@
     /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
-    // FORZATO a TRUE per l'MVP accessibile (coerente con main.py)
     const IS_USER_LOGGED_IN = true; 
     const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
 
@@ -185,12 +183,11 @@
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    // Imposta il testo del bottone (Ora sempre "Carica il tuo file")
     analyzeButton.textContent = 'Carica il tuo file';
 
 
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E RISULTATI
+    // FUNZIONI DI STATO E RISULTATI (AGGIORNATE)
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
@@ -219,25 +216,33 @@
     }
 
     function displayResult(result) {
-        // Logica per mostrare i risultati REALI di Gemini (Invariata)
-        const { nome_documento, risparmio_stimato_eur, tempo_risparmiato_min, analisi_clausole, riassunto_breve } = result;
-        
-        const risks = analisi_clausole.map(c => c.rischio).filter(r => r !== 'NON TROVATA');
-        let riskSummary = 'LOW';
-        if (risks.includes('HIGH')) { riskSummary = 'ALTO'; }
-        else if (risks.includes('MEDIUM')) { riskSummary = 'MEDIO'; }
+        // Estrai i NUOVI campi
+        const { 
+            nome_documento, 
+            risparmio_stimato_eur, 
+            tempo_risparmiato_min, 
+            analisi_clausole, 
+            riassunto_breve,
+            tempo_lettura_avvocato_stimato_min, // NUOVO
+            rischio_complessivo_percentuale    // NUOVO
+        } = result;
         
         // KPI Column
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
-        timeMetric.textContent = `${tempo_risparmiato_min} Minuti`;
+        // Ora mostriamo il tempo risparmiato e il tempo totale stimato per l'avvocato
+        timeMetric.innerHTML = `
+            ${tempo_risparmiato_min} Minuti 
+            <span style="font-size: 0.7em; color: var(--text-light); display: block;">(Stimato: ${tempo_lettura_avvocato_stimato_min} min)</span>
+        `;
 
+        // Modificato per mostrare la percentuale di rischio
         summaryList.innerHTML = `
             <li>• Documento: ${nome_documento.substring(0, 30)}...</li>
             <li>• Clausole Controllate: ${analisi_clausole.length}</li>
-            <li>• Riassunto Rischio: **${riskSummary}**</li>
+            <li>• Rischio Complessivo: **${rischio_complessivo_percentuale}%**</li>
         `;
 
-        // Report Detail Column
+        // Report Detail Column (invariato)
         reportDetail.innerHTML = `
             <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
             ${analisi_clausole.map(clausola => `
@@ -252,13 +257,10 @@
         showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
     }
     
-    // 🛑 RIMOSSA: Non abbiamo più bisogno della funzione checkStatus, l'analisi è sincrona.
-    
     async function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file); 
         
-        // 🚨 Aggiorniamo il messaggio per riflettere l'attesa sincrona
         showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
 
         try {
@@ -269,11 +271,9 @@
 
             const data = await response.json();
             
-            // 🎯 NUOVA LOGICA SINCRONA: Controlla lo stato della risposta
             if (response.ok && data.status === 'success') {
-                displayResult(data.result); // Chiama direttamente displayResult
+                displayResult(data.result);
             } else {
-                // Gestisce l'errore 400 o 500 che arriva direttamente dalla rotta /analyze
                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
             }
         } catch (error) {
@@ -288,19 +288,16 @@
     
     const ctaAction = (e) => {
         e.preventDefault();
-        // Poiché IS_USER_LOGGED_IN è forzato a true, apriamo sempre la finestra di selezione
         fileInput.click();
     }
 
-    // Listener per l'attivazione della finestra di selezione del PDF
     uploadArea.addEventListener('click', ctaAction);
     analyzeButton.addEventListener('click', ctaAction);
     
-    // Listener per l'upload effettivo del file dopo la selezione
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-             uploadFile(file); // 👈 AZIONE REALE CON IL BACKEND SINCRONO
+             uploadFile(file);
         }
     });
 

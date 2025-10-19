@@ -8,16 +8,15 @@ from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates 
 from pydantic import BaseModel, Field
 
-# 🛑 MODIFICA CRITICA: Cambiamo l'importazione da 'google.generativeai' a 'google.genai' 
-# per risolvere il ModuleNotFoundError, testando la compatibilità con Render.
+# IMPORTAZIONE CORRETTA
 import google.genai as genai 
 
 # Gestione dell'errore per compatibilità API SDK di Gemini
 try:
-    from google.genai.errors import APIError  # Adattato alla nuova importazione
+    from google.genai.errors import APIError
 except ImportError:
     try:
-        from google.genai import APIError      # Adattato alla nuova importazione
+        from google.genai import APIError
     except ImportError:
         class APIError(Exception):
             pass
@@ -52,7 +51,7 @@ def get_current_user_id(request: Request) -> str:
     return "ANONIMO" 
 
 # ----------------------------------------------------------------------------------
-# 🛑 LOGICA AI: COPIATA DAL VECCHIO WORKER (SINCRONA)
+# 🛑 LOGICA AI: Aggiornata per nuovi KPI
 # ----------------------------------------------------------------------------------
 
 # Funzione Helper per l'Inizializzazione Gemini
@@ -61,14 +60,13 @@ def get_gemini_client():
     if not api_key:
         raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
     
-    # FIX PER L'ERRORE 'has no attribute Client'
     if hasattr(genai, 'Client'):
         return genai.Client(api_key=api_key)
     else:
         genai.configure(api_key=api_key)
         return genai
 
-# Schema JSON (invariato)
+# Schema JSON per garantire l'output strutturato dall'AI - AGGIUNTI NUOVI CAMPI
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -76,6 +74,9 @@ OUTPUT_SCHEMA = {
         "risparmio_stimato_eur": {"type": "number", "description": "Valore in EUR (es. 60.00)."},
         "tempo_risparmiato_min": {"type": "integer", "description": "Tempo risparmiato in minuti (es. 15)."},
         "riassunto_breve": {"type": "string", "description": "Breve riassunto dei rischi trovati (massimo 2 frasi)."},
+        # NUOVI CAMPI RICHIESTI
+        "tempo_lettura_avvocato_stimato_min": {"type": "integer", "description": "Tempo stimato in minuti per un avvocato per leggere il documento e calcolare i rischi di liability/indemnification (es. 30)."},
+        "rischio_complessivo_percentuale": {"type": "integer", "description": "Percentuale di rischio complessivo del documento, da 0 a 100 (es. 65)."},
         "analisi_clausole": {
             "type": "array",
             "items": {
@@ -89,7 +90,15 @@ OUTPUT_SCHEMA = {
             }
         }
     },
-    "required": ["nome_documento", "risparmio_stimato_eur", "tempo_risparmiato_min", "riassunto_breve", "analisi_clausole"]
+    "required": [
+        "nome_documento", 
+        "risparmio_stimato_eur", 
+        "tempo_risparmiato_min", 
+        "riassunto_breve", 
+        "tempo_lettura_avvocato_stimato_min", # AGGIUNTO
+        "rischio_complessivo_percentuale",    # AGGIUNTO
+        "analisi_clausole"
+    ]
 }
 
 # Funzione che esegue l'analisi AI
@@ -101,23 +110,33 @@ async def run_gemini_analysis(temp_path: str, filename: str):
     try:
         gemini_client_or_module = get_gemini_client()
         
-        # 1. Carica il file su Gemini (logica invariata)
         if hasattr(gemini_client_or_module, 'files'): 
             uploaded_file = gemini_client_or_module.files.upload(file=temp_path)
         else: 
             uploaded_file = genai.upload_file(file=temp_path)
 
 
-        # 2. Prompt focalizzato (invariato)
+        # PROMPT AGGIORNATO per richiedere i nuovi KPI
         prompt = f"""
             Analizza il documento PDF fornito. Il tuo obiettivo è concentrarti SOLO su due aree critiche:
             1. Clausole di Limitazione di Responsabilità (Liability Caps).
             2. Clausole di Indennizzo (Indemnification).
-            Estrai i risultati in formato JSON. Per il ROI, assumi che l'avvocato medio risparmi 15 minuti di revisione per queste clausole.
-            Popola il campo "nome_documento" con "{filename}". Rispondi ESCLUSIVAMENTE con l'oggetto JSON richiesto.
+            
+            Estrai i risultati in formato JSON.
+            
+            **Per il ROI e il Tempo:**
+            - Stima il "tempo_lettura_avvocato_stimato_min" basandoti sulla complessità e lunghezza del documento. Considera che un avvocato esperto impiega mediamente 3 minuti per pagina per analizzare queste specifiche clausole critiche.
+            - Calcola il "tempo_risparmiato_min" sottraendo 5 minuti (tempo dell'AI) dal "tempo_lettura_avvocato_stimato_min". Se il risultato è negativo, impostalo a 0.
+            - Stima il "risparmio_stimato_eur" usando un costo medio orario dell'avvocato di 150 EUR/ora (2.5 EUR/minuto) moltiplicato per il "tempo_risparmiato_min".
+
+            **Per la Percentuale di Rischio:**
+            - Calcola una "rischio_complessivo_percentuale" da 0 (nessun rischio) a 100 (rischio massimo).
+            - Assegna 100% per un rischio HIGH, 50% per MEDIUM, 10% per LOW, 0% per NON TROVATA. Se ci sono più clausole, fai una media pesata.
+
+            Popola il campo "nome_documento" con "{filename}".
+            Rispondi ESCLUSIVAMENTE con l'oggetto JSON richiesto secondo lo schema.
             """
         
-        # 3. Generazione del Contenuto con Schema Enforced (logica invariata)
         if hasattr(gemini_client_or_module, 'models'): 
             response = gemini_client_or_module.models.generate_content(
                 model='gemini-2.5-flash',
@@ -131,12 +150,9 @@ async def run_gemini_analysis(temp_path: str, filename: str):
                 config={"response_mime_type": "application/json", "response_schema": OUTPUT_SCHEMA}
             )
 
-
-        # 4. Decodifica e Pulizia (logica invariata)
         output_text = response.text.strip()
         json_result = json.loads(output_text)
 
-        # 5. Pulizia del file da Gemini (logica invariata)
         if hasattr(gemini_client_or_module, 'files'): 
             gemini_client_or_module.files.delete(name=uploaded_file.name)
         else: 
@@ -147,7 +163,9 @@ async def run_gemini_analysis(temp_path: str, filename: str):
     except APIError as e:
         raise HTTPException(status_code=500, detail=f"Errore API Gemini: Verifica chiave/quota: {e}")
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=500, detail=f"Errore di decodifica JSON dall'AI. L'output era malformato.")
+        # Aggiunta del testo raw per debugging in caso di JSON malformato
+        print(f"Errore di decodifica JSON. Output AI RAW: {output_text}") 
+        raise HTTPException(status_code=500, detail=f"Errore di decodifica JSON dall'AI. L'output era malformato o vuoto. Output: {output_text[:200]}...")
     except Exception as e:
         if uploaded_file:
             try: 
