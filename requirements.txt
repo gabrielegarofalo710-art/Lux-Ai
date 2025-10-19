@@ -6,5 +6,6 @@ redis
 gunicorn
 google-generativeai
 pydantic
-# AGGIUNGI QUESTO:
 jinja2
+# AGGIUNGI QUESTO:
+python-multipart
