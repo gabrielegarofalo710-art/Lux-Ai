@@ -28,7 +28,7 @@ templates = Jinja2Templates(directory=".")
 WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'
 HOME_URL = 'https://luxailegal.wixsite.com/my-site-9'
 
-# --- SIMULAZIONE DATABASE (Accesso non più richiesto per l'analisi) ---
+# --- SIMULAZIONE DATABASE ---
 USERS_DB = {
     "user_wix_demo": {"is_logged_in": True, "is_paying_member": True, "email": "test-demo@lux-ai.com"}, 
     "ANONIMO": {"is_logged_in": False, "is_paying_member": False, "email": None},
@@ -36,14 +36,12 @@ USERS_DB = {
 
 # --- Modelli Pydantic per la Risposta (Sincrona) ---
 class ResultResponse(BaseModel):
-    # Risponde direttamente con successo o fallimento
     status: str = Field(..., description="Stato dell'analisi: success, failed")
     result: dict | None = None
     detail: str | None = None
 
 # --- UTILITY: Recupera l'Utente Corrente (SIMULAZIONE SSO) ---
 def get_current_user_id(request: Request) -> str:
-    # Mantenuto per coerenza, ma non usato per il paywall in /analyze
     auth_token = request.cookies.get("auth_token") 
     
     if auth_token == "demo_token" or auth_token == "paid_token":
@@ -59,9 +57,18 @@ def get_current_user_id(request: Request) -> str:
 def get_gemini_client():
     api_key = os.getenv("GEMINI_API_KEY") 
     if not api_key:
-        # Questo errore apparirà nei log di Render se la variabile manca
         raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
-    return genai.Client(api_key=api_key)
+    
+    # FIX PER L'ERRORE 'has no attribute Client'
+    # Usiamo genai.Client() solo se disponibile (nuovo SDK)
+    # Altrimenti, usiamo genai.configure() (vecchio SDK)
+    if hasattr(genai, 'Client'):
+        return genai.Client(api_key=api_key)
+    else:
+        # Per le versioni SDK più vecchie, configuriamo globalmente
+        genai.configure(api_key=api_key)
+        # E restituiamo un oggetto che usa le funzioni a livello di modulo
+        return genai
 
 # Schema JSON per garantire l'output strutturato dall'AI
 OUTPUT_SCHEMA = {
@@ -89,15 +96,19 @@ OUTPUT_SCHEMA = {
 
 # Funzione che esegue l'analisi AI
 async def run_gemini_analysis(temp_path: str, filename: str):
-    client = None
+    gemini_client_or_module = None
     uploaded_file = None
     output_text = ""
     
     try:
-        client = get_gemini_client()
+        gemini_client_or_module = get_gemini_client()
         
-        # 1. Carica il file su Gemini
-        uploaded_file = client.files.upload(file=temp_path)
+        # 1. Carica il file su Gemini (usa la funzione corretta a seconda dell'oggetto)
+        if hasattr(gemini_client_or_module, 'files'): # Nuovo SDK
+            uploaded_file = gemini_client_or_module.files.upload(file=temp_path)
+        else: # Vecchio SDK (usa la funzione a livello di modulo)
+            uploaded_file = genai.upload_file(file=temp_path)
+
 
         # 2. Prompt focalizzato
         prompt = f"""
@@ -109,21 +120,37 @@ async def run_gemini_analysis(temp_path: str, filename: str):
             """
         
         # 3. Generazione del Contenuto con Schema Enforced
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, uploaded_file],
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": OUTPUT_SCHEMA
-            }
-        )
+        
+        # Usa la funzione di generazione corretta a seconda dell'oggetto
+        if hasattr(gemini_client_or_module, 'models'): # Nuovo SDK
+            response = gemini_client_or_module.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[prompt, uploaded_file],
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": OUTPUT_SCHEMA
+                }
+            )
+        else: # Vecchio SDK (usa la funzione a livello di modulo)
+             response = genai.generate_content(
+                model='gemini-2.5-flash',
+                contents=[prompt, uploaded_file],
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": OUTPUT_SCHEMA
+                }
+            )
+
 
         # 4. Decodifica e Pulizia (Il testo della risposta dovrebbe essere un JSON puro)
         output_text = response.text.strip()
         json_result = json.loads(output_text)
 
-        # 5. Pulizia del file da Gemini
-        client.files.delete(name=uploaded_file.name)
+        # 5. Pulizia del file da Gemini (usa la funzione corretta)
+        if hasattr(gemini_client_or_module, 'files'): # Nuovo SDK
+            gemini_client_or_module.files.delete(name=uploaded_file.name)
+        else: # Vecchio SDK
+            genai.delete_file(name=uploaded_file.name)
         
         return json_result
 
@@ -133,12 +160,16 @@ async def run_gemini_analysis(temp_path: str, filename: str):
         raise HTTPException(status_code=500, detail=f"Errore di decodifica JSON dall'AI. L'output era malformato.")
     except Exception as e:
         # Pulizia in caso di errore generico
-        if uploaded_file and client:
-            try: client.files.delete(name=uploaded_file.name)
+        if uploaded_file:
+            try: 
+                if hasattr(gemini_client_or_module, 'files'):
+                    gemini_client_or_module.files.delete(name=uploaded_file.name)
+                else:
+                    genai.delete_file(name=uploaded_file.name)
             except: pass
         raise HTTPException(status_code=500, detail=f"Errore Fatale durante l'analisi: {e}")
     finally:
-        # Pulizia del file temporaneo locale (anche se in caso di successo lo facciamo prima)
+        # Pulizia del file temporaneo locale
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
@@ -149,7 +180,7 @@ async def run_gemini_analysis(temp_path: str, filename: str):
 # --- ROTTA PRINCIPALE: SERVE L'HTML DINAMICO ---
 @app.get("/")
 async def read_index(request: Request):
-    # Forziamo a True per l'MVP accessibile (coerente con l'HTML)
+    # Forziamo a True per l'MVP accessibile
     return templates.TemplateResponse(
         "index.html", 
         {
@@ -190,14 +221,11 @@ async def analyze_pdf_api(file: UploadFile = File(...)):
     try:
         analysis_result = await run_gemini_analysis(temp_path, file.filename)
         
-        # 4. Restituiamo il risultato finale in formato ResultResponse
+        # 4. Restituiamo il risultato finale
         return ResultResponse(status="success", result=analysis_result, detail="Analisi completata con successo.")
         
     except HTTPException:
-        # Rilancia le eccezioni HTTP che abbiamo creato in run_gemini_analysis
+        # Rilancia le eccezioni HTTP interne
         raise
     except Exception as e:
-        # Gestisce qualsiasi altro errore (dovrebbe essere gestito in run_gemini_analysis, ma per sicurezza)
         raise HTTPException(status_code=500, detail=f"Errore di servizio FATALE: {e}")
-
-# 🛑 Rotta /status/{job_id} RIMOSSA - Non più necessaria nel modello sincrono.

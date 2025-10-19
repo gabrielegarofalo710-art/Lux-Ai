@@ -1,11 +1,13 @@
+# Core Framework e Server
 fastapi
-uvicorn[standard]
-python-dotenv
-celery
-redis
 gunicorn
-google-generativeai
-pydantic
+uvicorn[standard]
+
+# Gestione AI e File
+google-genai>=0.1.0  # Assicura che la versione sia abbastanza recente per 'Client'
+python-multipart    # Per la gestione dell'upload dei file in FastAPI
+pydantic            # Per i modelli di dati FastAPI
+
+# Utility
+python-dotenv
 jinja2
-# AGGIUNGI QUESTO:
-python-multipart
