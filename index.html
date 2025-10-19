@@ -56,16 +56,16 @@
         
         /* 1. LAYOUT INIZIALE: Solo upload (singola colonna) */
         .single-column-layout {
-            display: flex; /* Usiamo flex per centrare l'area di upload */
+            display: flex; 
             justify-content: center;
             align-items: flex-start;
             min-height: 400px;
         }
         
-        /* 2. LAYOUT REPORT: Due colonne ampliate (KPI + Dettaglio) */
+        /* 2. LAYOUT REPORT: Due colonne ampliate */
         .report-columns-layout { 
-            display: none; /* NASCOSTO DI DEFAULT */
-            grid-template-columns: 1fr 2fr; /* Griglia a due colonne: KPI (1) e Dettaglio (2) */
+            display: none; 
+            grid-template-columns: 1fr 2fr; 
             gap: 30px; 
             margin-top: -10px; 
         }
@@ -101,20 +101,71 @@
         .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
         .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
         .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
+        
+        /* NUOVI STILI PER LA BARRA DI CARICAMENTO */
         #statusFeedback {
-            margin-top: 25px; padding: 15px; border-radius: var(--border-radius);
-            font-weight: 600; text-align: center; display: none;
+            margin-top: 25px; 
+            padding: 15px; 
+            border-radius: var(--border-radius);
+            font-weight: 600; 
+            text-align: center; 
+            display: none;
+            /* Flexbox per allineare gli elementi */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .status-processing { background-color: #fff3cd; color: #856404; }
+        
         .status-error { background-color: #fbe6e6; color: var(--danger-color); }
         .status-success { background-color: #d4edda; color: #155724; }
+
+        /* Spinner (Cerchio Blu che Gira) */
         .spinner { 
-            border: 4px solid #f3f3f3; border-top: 4px solid var(--brand-color);
-            border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; 
-            display: inline-block; margin-left: 10px;
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid var(--brand-color);
+            border-radius: 50%; 
+            width: 20px; 
+            height: 20px; 
+            animation: spin 1s linear infinite; 
+            display: inline-block; 
+            margin-right: 15px; /* Spazio a destra del testo */
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .trust-section { display: none; } 
+        
+        /* Contenitore della barra di avanzamento */
+        .loading-bar-container {
+            width: 100%;
+            height: 8px; /* Altezza della striscia */
+            background-color: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        /* Striscia che avanza */
+        .loading-bar-fill {
+            height: 100%;
+            width: 30%; /* Larghezza iniziale */
+            background-color: var(--brand-color);
+            animation: move-bar 2s linear infinite; /* Animazione di movimento */
+            border-radius: 4px;
+        }
+
+        /* Animazione per la linea che avanza (effetto indeterminato) */
+        @keyframes move-bar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Contenitore per il testo e lo spinner */
+        .processing-content {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-dark); /* Colore del testo durante l'analisi */
+            margin-bottom: 5px;
+        }
+
 
         .ai-suggestion-box {
             padding: 15px;
@@ -125,7 +176,6 @@
             font-size: 0.9em;
         }
         
-        /* NUOVO STILE per il bottone di reset */
         .reset-button {
             background-color: var(--brand-color);
             color: white;
@@ -176,8 +226,16 @@
                 
                 <button class="cta-button-middle" id="analyzeButton">Carica il tuo file</button>
                 
-                <div id="statusFeedback" class="status-processing">
-                    <span id="statusText">In attesa di caricamento...</span> <span id="spinner" class="spinner"></span>
+                <div id="statusFeedback" class="status-processing" style="display: none; flex-direction: column; background-color: #f7f7f7; border: 1px solid #ddd;">
+                    
+                    <div class="processing-content">
+                        <span id="spinner" class="spinner"></span> 
+                        <span id="statusText">Analisi AI in corso... Potrebbe volerci qualche secondo.</span>
+                    </div>
+
+                    <div class="loading-bar-container">
+                        <div class="loading-bar-fill"></div>
+                    </div>
                 </div>
 
             </div>
@@ -243,7 +301,7 @@
     // RIFERIMENTI AI CONTENITORI
     const uploadContainer = document.getElementById('uploadContainer');
     const reportContainer = document.getElementById('reportContainer');
-    const resetButton = document.getElementById('resetButton'); // NUOVO
+    const resetButton = document.getElementById('resetButton'); 
 
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
@@ -258,9 +316,7 @@
     
     // Funzione per mostrare l'area di upload e nascondere il report
     function showUploadLayout() {
-        // Mostra l'area di upload
         uploadContainer.style.display = 'flex'; 
-        // Nasconde il layout del report
         reportContainer.style.display = 'none';
         
         // Resetta l'input file e nasconde il feedback di stato
@@ -279,27 +335,50 @@
     window.onload = showUploadLayout;
     
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E RISULTATI
+    // FUNZIONI DI STATO E RISULTATI (AGGIORNATA PER LA NUOVA BARRA)
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
+        
         // Se si passa a un'analisi o a un errore, assicurati che l'area di upload sia visibile
         if (type !== 'success') {
             uploadContainer.style.display = 'flex';
             reportContainer.style.display = 'none';
         }
 
-        statusFeedback.style.display = 'block';
+        statusFeedback.style.display = 'flex'; // Usiamo flex per il nuovo layout interno
         statusText.textContent = message;
         
-        if (showSpinner) {
-            statusFeedback.className = `status-processing`;
+        // Gestione della VISIBILITÀ e STILE
+        const loadingBar = statusFeedback.querySelector('.loading-bar-container');
+        const processingContent = statusFeedback.querySelector('.processing-content');
+
+        if (type === 'processing') {
+            // Modalità Analisi/Caricamento (Mostra Barra e Spinner)
+            statusFeedback.className = ``; // Rimuovi classi di errore/successo per lo stato generico
+            loadingBar.style.display = 'block';
+            processingContent.style.display = 'flex';
             spinner.style.display = 'inline-block';
-        } else {
-            statusFeedback.className = `status-${type}`;
+            statusFeedback.style.backgroundColor = '#f7f7f7'; // Reset colore di sfondo
+            statusFeedback.style.border = '1px solid #ddd'; // Reset bordo
+            statusText.style.color = 'var(--text-dark)';
+
+        } else if (type === 'error') {
+            // Modalità Errore (Nasconde Barra, Mostra Solo Testo Errore)
+            statusFeedback.className = `status-error`;
+            loadingBar.style.display = 'none';
+            processingContent.style.display = 'flex';
             spinner.style.display = 'none';
+            statusText.style.color = 'var(--danger-color)'; // Colore del testo per errore
+
+        } else if (type === 'success') {
+            // Modalità Successo (Nasconde tutto, viene mostrato solo il report)
+            statusFeedback.className = `status-success`;
+            loadingBar.style.display = 'none';
+            processingContent.style.display = 'none'; // Nascondi il contenuto di processing
+            
         }
-        
+
         // Reset risultati statici
         if (type !== 'success') {
             roiMetric.textContent = '€45.00'; 
@@ -311,16 +390,13 @@
                 <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
                 <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
               `;
-            // Ricollega i riferimenti dopo l'innerHTML
             document.getElementById('riskScoreItem').textContent = 'Indice di Rischio: N/D / 100';
             document.getElementById('riskMotivationItem').innerHTML = 'Motivazione: Carica un file per l\'analisi.';
-
             reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
         }
     }
 
     function displayResult(result) {
-        // Mostra il layout del report e nasconde l'upload
         showReportLayout(); 
 
         const { 
@@ -389,10 +465,10 @@
         const formData = new FormData();
         formData.append('file', file); 
         
-        // Assicurati che l'area di upload sia visibile durante l'analisi
         uploadContainer.style.display = 'flex'; 
         reportContainer.style.display = 'none';
 
+        // Avvia la nuova visualizzazione di caricamento
         showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
 
         try {
@@ -415,7 +491,7 @@
 
 
     // ----------------------------------------------------------------------
-    // GESTORE DI EVENTI PRINCIPALE (CON IL NUOVO RESET)
+    // GESTORE DI EVENTI PRINCIPALE
     // ----------------------------------------------------------------------
     
     const ctaAction = (e) => {
@@ -433,7 +509,7 @@
         }
     });
     
-    // NUOVO EVENTO: Reset
+    // Evento Reset
     resetButton.addEventListener('click', showUploadLayout);
 
 </script>
