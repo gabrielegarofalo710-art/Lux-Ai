@@ -169,8 +169,7 @@
     /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
-    // 💥 MODIFICA CRITICA QUI: Forziamo il login a TRUE per rendere l'MVP accessibile
-    // e cambiare il testo del bottone da "Accedi" a "Carica".
+    // FORZATO a TRUE per l'MVP accessibile (coerente con main.py)
     const IS_USER_LOGGED_IN = true; 
     const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
 
@@ -186,8 +185,8 @@
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    // Imposta il testo del bottone in base allo stato di accesso (ora forzato a true)
-    analyzeButton.textContent = IS_USER_LOGGED_IN ? 'Carica il tuo file' : 'Accedi per l\'anteprima';
+    // Imposta il testo del bottone (Ora sempre "Carica il tuo file")
+    analyzeButton.textContent = 'Carica il tuo file';
 
 
     // ----------------------------------------------------------------------
@@ -206,7 +205,7 @@
             spinner.style.display = 'none';
         }
         
-        // Reset risultati statici se non è un successo
+        // Reset risultati statici
         if (type !== 'success') {
             roiMetric.textContent = '€400+'; 
             timeMetric.textContent = '4+ Ore'; 
@@ -220,10 +219,9 @@
     }
 
     function displayResult(result) {
-        // Logica per mostrare i risultati REALI di Gemini
+        // Logica per mostrare i risultati REALI di Gemini (Invariata)
         const { nome_documento, risparmio_stimato_eur, tempo_risparmiato_min, analisi_clausole, riassunto_breve } = result;
         
-        // Calcola il rischio complessivo per lo status
         const risks = analisi_clausole.map(c => c.rischio).filter(r => r !== 'NON TROVATA');
         let riskSummary = 'LOW';
         if (risks.includes('HIGH')) { riskSummary = 'ALTO'; }
@@ -254,54 +252,14 @@
         showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
     }
     
-    // ----------------------------------------------------------------------
-    // LOGICA ASINCRONA REALE (FastAPI + Celery)
-    // ----------------------------------------------------------------------
-    
-    async function checkStatus(jobId) {
-        const url = `/status/${jobId}`;
-        let attempts = 0;
-        const maxAttempts = 120; // 60 secondi totali (120 * 500ms)
-
-        const check = setInterval(async () => {
-            if (attempts >= maxAttempts) {
-                clearInterval(check);
-                showStatus('Timeout. L\'analisi è troppo lunga o il servizio worker è inattivo.', 'error', false);
-                return;
-            }
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                // Aggiorna lo stato usando i messaggi dal worker Celery (data.detail)
-                const currentMessage = data.detail || 'Analisi in corso...';
-                
-                if (data.status === 'SUCCESS') {
-                    clearInterval(check);
-                    displayResult(data.result);
-                } else if (data.status === 'FAILURE' || data.status === 'REVOKED') {
-                    clearInterval(check);
-                    showStatus(`Analisi fallita: ${data.detail || 'Errore generico.'}`, 'error', false);
-                } else {
-                    // PENDING o STARTED
-                    showStatus(currentMessage, 'processing', true);
-                }
-                
-            } catch (error) {
-                clearInterval(check);
-                showStatus('Errore di connessione. Controlla il servizio Render.', 'error', false);
-            }
-            
-            attempts++;
-        }, 500); 
-    }
+    // 🛑 RIMOSSA: Non abbiamo più bisogno della funzione checkStatus, l'analisi è sincrona.
     
     async function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file); 
         
-        showStatus('Caricamento del file in corso...', 'processing', true);
+        // 🚨 Aggiorniamo il messaggio per riflettere l'attesa sincrona
+        showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
 
         try {
             const response = await fetch('/analyze', {
@@ -311,11 +269,11 @@
 
             const data = await response.json();
             
-            if (response.ok && data.job_id) {
-                // Inizia il polling usando il job_id restituito da FastAPI
-                checkStatus(data.job_id);
+            // 🎯 NUOVA LOGICA SINCRONA: Controlla lo stato della risposta
+            if (response.ok && data.status === 'success') {
+                displayResult(data.result); // Chiama direttamente displayResult
             } else {
-                // Gestisce l'errore 403 (Non loggato) o 400 (Formato file errato) dal tuo main.py
+                // Gestisce l'errore 400 o 500 che arriva direttamente dalla rotta /analyze
                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
             }
         } catch (error) {
@@ -325,20 +283,13 @@
 
 
     // ----------------------------------------------------------------------
-    // GESTORE DI EVENTI PRINCIPALE (Azione CTA: Login o Upload)
+    // GESTORE DI EVENTI PRINCIPALE 
     // ----------------------------------------------------------------------
     
     const ctaAction = (e) => {
         e.preventDefault();
-
-        // 🎯 ORA SEMPRE TRUE, QUINDI SEMPRE uploadArea.click()
-        if (IS_USER_LOGGED_IN) {
-            // Utente loggato (forzato): Avvia l'upload
-            fileInput.click();
-        } else {
-            // Utente NON loggato: Reindirizza al login (NON DEVE ACCADERE ORA)
-            window.location.href = WIX_LOGIN_URL; 
-        }
+        // Poiché IS_USER_LOGGED_IN è forzato a true, apriamo sempre la finestra di selezione
+        fileInput.click();
     }
 
     // Listener per l'attivazione della finestra di selezione del PDF
@@ -349,12 +300,7 @@
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (IS_USER_LOGGED_IN) {
-                uploadFile(file); // 👈 AZIONE REALE CON IL BACKEND
-            } else {
-                // Questo non dovrebbe mai accadere con IS_USER_LOGGED_IN = true
-                showStatus('Accesso richiesto. Clicca il bottone per accedere.', 'error', false);
-            }
+             uploadFile(file); // 👈 AZIONE REALE CON IL BACKEND SINCRONO
         }
     });
 
