@@ -3,6 +3,8 @@ uvicorn[standard]
 python-dotenv
 celery
 redis
-pydantic
 gunicorn
 google-generativeai
+pydantic
+# AGGIUNGI QUESTO:
+jinja2
