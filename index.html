@@ -47,13 +47,35 @@
         .top-bar-pitch p { color: var(--text-light); font-size: 0.85em; margin: 2px 0 0 0; }
         .top-bar-nav { flex-shrink: 0; font-size: 0.9em; }
         .top-bar-nav a { color: var(--brand-color); text-decoration: none; margin-left: 15px; cursor: pointer; }
+        
+        /* Contenitore principale della CARD */
         .content-card {
             max-width: 1200px; width: 95%; margin: 40px 20px; background-color: var(--background-light);
             color: var(--text-dark); padding: 35px; border-radius: var(--border-radius);
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.2); box-sizing: border-box;
         }
-        .columns-layout { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 30px; }
-        .upload-component { padding: 20px; border-radius: var(--border-radius); text-align: center; }
+        
+        /* 1. LAYOUT INIZIALE: Solo upload (singola colonna) */
+        .single-column-layout {
+            display: flex; /* Usiamo flex per centrare l'area di upload */
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 400px;
+        }
+        
+        /* 2. LAYOUT REPORT: Tre colonne con maggiore spazio (Rimuoviamo la colonna upload) */
+        .report-columns-layout { 
+            display: none; /* NASCOSTO DI DEFAULT */
+            grid-template-columns: 1fr 2fr; /* Griglia a due colonne: KPI (1) e Dettaglio (2) */
+            gap: 30px; 
+            margin-top: -10px; /* Spostiamo leggermente in su per l'eliminazione del padding del container upload */
+        }
+        
+        /* Stili per le colonne originali */
+        .upload-component { 
+            padding: 20px; border-radius: var(--border-radius); text-align: center; 
+            max-width: 400px; width: 100%;
+        }
         .upload-area {
             background-color: #e9eff5; padding: 40px 20px; border-radius: var(--border-radius);
             margin-bottom: 20px; height: 170px; display: flex; flex-direction: column;
@@ -95,13 +117,12 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .trust-section { display: none; } 
 
-        /* NUOVO STILE per la sezione Suggerimenti */
         .ai-suggestion-box {
             padding: 15px;
             border: 1px dashed var(--brand-color);
             border-radius: var(--border-radius);
             margin-top: 20px;
-            background-color: #e9f5ff; /* Sfondo molto chiaro */
+            background-color: #e9f5ff;
             font-size: 0.9em;
         }
     </style>
@@ -123,14 +144,15 @@
     </div>
 
     <div class="content-card">
-        <div class="columns-layout">
+        
+        <div id="uploadContainer" class="single-column-layout">
             <div class="upload-component">
                 <input type="file" id="fileInput" accept="application/pdf">
                 
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📄</div>
                     <p style="font-weight: 600; color: var(--text-dark);">Carica qui il tuo PDF Legale</p>
-                    <p style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è asincrona.</p>
+                    <p style="font-size: 0.9em; color: var(--text-light);">Solo PDF nativi per l'accuratezza massima. L'analisi è sincrona.</p>
                 </div>
                 
                 <button class="cta-button-middle" id="analyzeButton">Carica il tuo file</button>
@@ -140,13 +162,19 @@
                 </div>
 
             </div>
+        </div>
 
+        <div id="reportContainer" class="report-columns-layout">
+            
             <div class="kpi-column">
                 <div class="results-box">
                     <div class="kpi-title">ROI & Efficienza</div>
                     <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
-                    <div class="kpi-metric" id="roiMetric">€45.00</div> <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
-                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p> </div>
+                    <div class="kpi-metric" id="roiMetric">€45.00</div>
+                    
+                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
+                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p>
+                </div>
                 
                 <div class="results-box">
                     <div class="kpi-title">Stato Analisi</div>
@@ -154,17 +182,20 @@
                         <li>• Focus Clausole Critiche: Liability & Indemnification</li>
                         <li>• Clausole Controllate: 2 (MVP)</li>
                         <li>• Rischio Complessivo: **Medio**</li>
-                        <li id="riskScoreItem">Indice di Rischio: N/D / 100</li> <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li> </ul>
+                        <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+                        <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
+                    </ul>
                 </div>
             </div>
 
-            <div class="results-box">
+            <div class="results-box" style="padding: 25px;">
                 <div class="kpi-title">Report Dettaglio Rischi</div>
                 <div id="reportDetail">
                     <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
                 </div>
             </div>
         </div>
+        
     </div>
     
     <div class="trust-section"></div>
@@ -186,22 +217,39 @@
     const statusText = document.getElementById('statusText');
     const spinner = document.getElementById('spinner');
 
+    // NUOVI RIFERIMENTI AI CONTENITORI
+    const uploadContainer = document.getElementById('uploadContainer');
+    const reportContainer = document.getElementById('reportContainer');
+
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
-    const riskScoreItem = document.getElementById('riskScoreItem'); // Nuovo
-    const riskMotivationItem = document.getElementById('riskMotivationItem'); // Nuovo
-
     analyzeButton.textContent = 'Carica il tuo file';
 
 
     // ----------------------------------------------------------------------
-    // FUNZIONI DI STATO E RISULTATI (AGGIORNATE)
+    // FUNZIONE DI TRANSIZIONE (NUOVA)
+    // ----------------------------------------------------------------------
+    function showReportLayout() {
+        // Nasconde l'area di upload
+        uploadContainer.style.display = 'none'; 
+        // Mostra il layout del report ampliato
+        reportContainer.style.display = 'grid'; 
+    }
+    
+    // ----------------------------------------------------------------------
+    // FUNZIONI DI STATO E RISULTATI
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
+        // Se l'analisi sta partendo o fallisce, mostra l'area di upload e nascondi i report (solo se non era già in modalità report)
+        if (type !== 'success') {
+            uploadContainer.style.display = 'flex';
+            reportContainer.style.display = 'none';
+        }
+
         statusFeedback.style.display = 'block';
         statusText.textContent = message;
         
@@ -213,7 +261,7 @@
             spinner.style.display = 'none';
         }
         
-        // Reset risultati statici (Punto 4)
+        // Reset risultati statici
         if (type !== 'success') {
             roiMetric.textContent = '€45.00'; 
             timeMetric.textContent = '12 Minuti'; 
@@ -225,7 +273,6 @@
                 <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
               `;
             // Ricollega i riferimenti dopo l'innerHTML
-            // Questo è un modo per gestire i riferimenti DOM quando si riscrive l'HTML interno.
             document.getElementById('riskScoreItem').textContent = 'Indice di Rischio: N/D / 100';
             document.getElementById('riskMotivationItem').innerHTML = 'Motivazione: Carica un file per l\'analisi.';
 
@@ -234,6 +281,9 @@
     }
 
     function displayResult(result) {
+        // 🚨 CHIAMATA CRUCIALE: Mostra il layout del report e nasconde l'upload
+        showReportLayout(); 
+
         const { 
             nome_documento, 
             risparmio_stimato_eur, 
@@ -242,20 +292,17 @@
             riassunto_breve,
             tempo_lettura_avvocato_stimato_min,
             rischio_complessivo_percentuale,
-            motivazione_rischio_complessivo, // NUOVO
-            suggerimenti_ai                  // NUOVO
+            motivazione_rischio_complessivo,
+            suggerimenti_ai
         } = result;
 
         // --- COLONNA KPI ---
-        // ROI (Punto 4)
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
-        // Tempo Risparmiato (Punto 4)
         timeMetric.innerHTML = `
             ${tempo_risparmiato_min} Minuti 
             <span style="font-size: 0.7em; color: var(--text-light); display: block;">(Stimato Avv.: ${tempo_lettura_avvocato_stimato_min} min)</span>
         `;
 
-        // Riepilogo Rischio (Punto 1 & 2)
         let riskSummaryText = 'BASSO';
         if (rischio_complessivo_percentuale >= 67) riskSummaryText = 'ALTO';
         else if (rischio_complessivo_percentuale >= 34) riskSummaryText = 'MEDIO';
@@ -269,7 +316,6 @@
         `;
 
         // --- COLONNA REPORT DETTAGLIO ---
-        // Dettaglio Clausole (Invariato)
         let detailHtml = `
             <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
             ${analisi_clausole.map(clausola => `
@@ -280,7 +326,7 @@
             `).join('')}
         `;
         
-        // Sintesi Finale e Suggerimenti AI (Punto 3 & 5)
+        // Sintesi Finale e Suggerimenti AI
         detailHtml += `
             <div class="ai-suggestion-box">
                 <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
@@ -297,13 +343,23 @@
 
         reportDetail.innerHTML = detailHtml;
 
-        showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
+        // Lo stato rimane nella parte inferiore dell'upload, anche se ora è nascosto.
+        // Possiamo nascondere il messaggio di stato dopo il successo per pulizia,
+        // ma lo manteniamo visibile brevemente.
+        statusFeedback.style.display = 'none'; 
+        
+        // Se volessimo riposizionare il feedback di successo:
+        // alert(`Analisi completata con successo! ${nome_documento}`); 
     }
     
     async function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file); 
         
+        // In questo momento, mostriamo l'upload e il feedback sotto
+        uploadContainer.style.display = 'flex'; 
+        reportContainer.style.display = 'none';
+
         showStatus('Analisi AI in corso... Potrebbe volerci qualche secondo.', 'processing', true);
 
         try {
@@ -316,10 +372,13 @@
             
             if (response.ok && data.status === 'success') {
                 displayResult(data.result);
+                // Il feedback di successo viene gestito da displayResult (che lo nasconde)
             } else {
+                // In caso di errore, rimane nell'area di upload
                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
             }
         } catch (error) {
+            // In caso di errore di rete, rimane nell'area di upload
             showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
         }
     }
