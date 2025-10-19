@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lux-Ai - Analisi Rischi Legali (MVP Accessibile)</title>
     <style>
-        /* CSS OMESSO PER BREVITÀ - MANTENUTO INTATTO RISPETTO ALL'ORIGINALE */
         :root {
             --brand-color: #3F93E6;
             --background-main: #2c3e50;
@@ -14,7 +13,7 @@
             --font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             --danger-color: #dc3545;
             --warning-color: #ffc107;
-            --text-dark: #2c3e50; 
+            --text-dark: #2c3e50;
             --text-light: #666;
             --border-radius: 6px;
         }
@@ -63,12 +62,12 @@
             min-height: 400px;
         }
         
-        /* 2. LAYOUT REPORT: Tre colonne con maggiore spazio (Rimuoviamo la colonna upload) */
+        /* 2. LAYOUT REPORT: Due colonne ampliate (KPI + Dettaglio) */
         .report-columns-layout { 
             display: none; /* NASCOSTO DI DEFAULT */
             grid-template-columns: 1fr 2fr; /* Griglia a due colonne: KPI (1) e Dettaglio (2) */
             gap: 30px; 
-            margin-top: -10px; /* Spostiamo leggermente in su per l'eliminazione del padding del container upload */
+            margin-top: -10px; 
         }
         
         /* Stili per le colonne originali */
@@ -124,6 +123,26 @@
             margin-top: 20px;
             background-color: #e9f5ff;
             font-size: 0.9em;
+        }
+        
+        /* NUOVO STILE per il bottone di reset */
+        .reset-button {
+            background-color: var(--brand-color);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.05em;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 30px;
+            transition: background-color 0.2s;
+            text-align: center;
+            display: block; 
+        }
+        .reset-button:hover { 
+            background-color: #337ab7; 
         }
     </style>
 </head>
@@ -194,6 +213,10 @@
                     <p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>
                 </div>
             </div>
+            
+            <button id="resetButton" class="reset-button" style="grid-column: 1 / 3;">
+                Analizza un altro file
+            </button>
         </div>
         
     </div>
@@ -217,9 +240,10 @@
     const statusText = document.getElementById('statusText');
     const spinner = document.getElementById('spinner');
 
-    // NUOVI RIFERIMENTI AI CONTENITORI
+    // RIFERIMENTI AI CONTENITORI
     const uploadContainer = document.getElementById('uploadContainer');
     const reportContainer = document.getElementById('reportContainer');
+    const resetButton = document.getElementById('resetButton'); // NUOVO
 
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
@@ -228,23 +252,38 @@
 
     analyzeButton.textContent = 'Carica il tuo file';
 
+    // ----------------------------------------------------------------------
+    // FUNZIONI DI VISUALIZZAZIONE
+    // ----------------------------------------------------------------------
+    
+    // Funzione per mostrare l'area di upload e nascondere il report
+    function showUploadLayout() {
+        // Mostra l'area di upload
+        uploadContainer.style.display = 'flex'; 
+        // Nasconde il layout del report
+        reportContainer.style.display = 'none';
+        
+        // Resetta l'input file e nasconde il feedback di stato
+        showStatus('In attesa di caricamento...', 'processing', false);
+        statusFeedback.style.display = 'none'; 
+        fileInput.value = '';
+    }
 
-    // ----------------------------------------------------------------------
-    // FUNZIONE DI TRANSIZIONE (NUOVA)
-    // ----------------------------------------------------------------------
+    // Funzione per mostrare il report e nascondere l'upload
     function showReportLayout() {
-        // Nasconde l'area di upload
         uploadContainer.style.display = 'none'; 
-        // Mostra il layout del report ampliato
         reportContainer.style.display = 'grid'; 
     }
+    
+    // Al caricamento della pagina, mostra solo l'upload
+    window.onload = showUploadLayout;
     
     // ----------------------------------------------------------------------
     // FUNZIONI DI STATO E RISULTATI
     // ----------------------------------------------------------------------
 
     function showStatus(message, type = 'processing', showSpinner = true) {
-        // Se l'analisi sta partendo o fallisce, mostra l'area di upload e nascondi i report (solo se non era già in modalità report)
+        // Se si passa a un'analisi o a un errore, assicurati che l'area di upload sia visibile
         if (type !== 'success') {
             uploadContainer.style.display = 'flex';
             reportContainer.style.display = 'none';
@@ -281,7 +320,7 @@
     }
 
     function displayResult(result) {
-        // 🚨 CHIAMATA CRUCIALE: Mostra il layout del report e nasconde l'upload
+        // Mostra il layout del report e nasconde l'upload
         showReportLayout(); 
 
         const { 
@@ -343,20 +382,14 @@
 
         reportDetail.innerHTML = detailHtml;
 
-        // Lo stato rimane nella parte inferiore dell'upload, anche se ora è nascosto.
-        // Possiamo nascondere il messaggio di stato dopo il successo per pulizia,
-        // ma lo manteniamo visibile brevemente.
         statusFeedback.style.display = 'none'; 
-        
-        // Se volessimo riposizionare il feedback di successo:
-        // alert(`Analisi completata con successo! ${nome_documento}`); 
     }
     
     async function uploadFile(file) {
         const formData = new FormData();
         formData.append('file', file); 
         
-        // In questo momento, mostriamo l'upload e il feedback sotto
+        // Assicurati che l'area di upload sia visibile durante l'analisi
         uploadContainer.style.display = 'flex'; 
         reportContainer.style.display = 'none';
 
@@ -372,20 +405,17 @@
             
             if (response.ok && data.status === 'success') {
                 displayResult(data.result);
-                // Il feedback di successo viene gestito da displayResult (che lo nasconde)
             } else {
-                // In caso di errore, rimane nell'area di upload
                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
             }
         } catch (error) {
-            // In caso di errore di rete, rimane nell'area di upload
             showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
         }
     }
 
 
     // ----------------------------------------------------------------------
-    // GESTORE DI EVENTI PRINCIPALE 
+    // GESTORE DI EVENTI PRINCIPALE (CON IL NUOVO RESET)
     // ----------------------------------------------------------------------
     
     const ctaAction = (e) => {
@@ -402,6 +432,9 @@
              uploadFile(file);
         }
     });
+    
+    // NUOVO EVENTO: Reset
+    resetButton.addEventListener('click', showUploadLayout);
 
 </script>
 </html>
