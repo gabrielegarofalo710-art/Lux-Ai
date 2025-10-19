@@ -111,7 +111,7 @@
         .kpi-list { list-style-type: none; padding: 0; font-size: 0.95em; color: var(--text-dark); }
         .kpi-list li { margin-bottom: 6px; }
         
-        /* Il bottone CTA-button-middle non serve più se la logica è nell'upload area */
+        /* Il bottone CTA-button-middle che viene nascosto */
         .cta-button-middle {
             background-color: var(--cta-color); color: white; padding: 14px 35px; border: none;
             border-radius: var(--border-radius); font-size: 1.15em; font-weight: 700; cursor: pointer;
@@ -197,12 +197,11 @@
             background-color: #e0e0e0;
         }
         .report-nav-item.active {
-            background-color: #2c3e50; /* Cambiato a nero per lo stile richiesto */
+            background-color: #2c3e50; 
             color: white;
         }
 
         #chartsContainer {
-            display: none;
             min-height: 200px; 
             display: flex;
             justify-content: center;
@@ -317,7 +316,7 @@
                     </div>
                 </div>
 
-                <div id="chartsContainer">
+                <div id="chartsContainer" style="display: none;">
                     <p>Qui verranno visualizzati i tuoi grafici! (Contenuto non rovinato)</p>
                 </div>
             </div>
@@ -339,15 +338,11 @@
     /* CONFIGURAZIONE E UTILITY DOM */
     /* ---------------------------------------------------------------------- */
     
-    const IS_USER_LOGGED_IN = true; 
-    const WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'; 
-
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
     const analyzeButton = document.getElementById('analyzeButton'); 
     const statusFeedback = document.getElementById('statusFeedback');
     const statusText = document.getElementById('statusText');
-    const spinner = document.getElementById('spinner');
 
     const uploadContainer = document.getElementById('uploadContainer');
     const reportContainer = document.getElementById('reportContainer');
@@ -357,7 +352,6 @@
     const loadingUploadIcon = document.getElementById('loadingUploadIcon');
     const uploadTextDefaults = document.querySelectorAll('.upload-text-default');
     const uploadTextLoadings = document.querySelectorAll('.upload-text-loading');
-
 
     const roiMetric = document.getElementById('roiMetric');
     const timeMetric = document.getElementById('timeMetric');
@@ -458,17 +452,24 @@
             statusFeedback.style.display = 'none'; 
         }
 
-        // Reset risultati statici (per pulizia)
+        // Reset risultati statici
         if (type !== 'success') {
-            // ... (logica di reset risultati omessa per brevità ma presente nel codice precedente)
+            roiMetric.textContent = '€45.00'; 
+            timeMetric.textContent = '12 Minuti'; 
+            summaryList.innerHTML = `
+                <li>• Focus Clausole Critiche: Liability & Indemnification</li>
+                <li>• Clausole Controllate: 2 (MVP)</li>
+                <li>• Rischio Complessivo: **Medio**</li>
+                <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+                <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
+              `;
+            reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
         }
     }
 
     function displayResult(result) {
         showReportLayout(); 
         showStatus('', 'success', false); 
-
-        // Destrutturazione dei risultati... (omessa per brevità)
 
         const { 
             nome_documento, 
@@ -482,8 +483,7 @@
             suggerimenti_ai
         } = result;
 
-        // ... (Logica per popolare KPI e Report Dettaglio come prima)
-        
+        // --- COLONNA KPI ---
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
         timeMetric.innerHTML = `
             ${tempo_risparmiato_min} Minuti 
@@ -502,6 +502,7 @@
             <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: ${motivazione_rischio_complessivo}</li>
         `;
 
+        // --- COLONNA REPORT DETTAGLIO ---
         let detailHtml = `
             <div class="kpi-title">Report Dettaglio Rischi</div>
             ${analisi_clausole.map(clausola => `
@@ -512,6 +513,7 @@
             `).join('')}
         `;
         
+        // Sintesi Finale e Suggerimenti AI
         detailHtml += `
             <div class="ai-suggestion-box">
                 <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
@@ -536,10 +538,12 @@
         showStatus('Caricamento del file...', 'processing', true); 
         
         try {
-            // Simulazione di un'analisi di successo
-            await new Promise(resolve => setTimeout(resolve, 2000)); 
-            
-            // Dati di esempio per la visualizzazione del report
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData,
+            });
+
+            // Simulazione dei dati di successo se non hai un backend reale attivo
             const dummyResult = {
                 nome_documento: file.name,
                 risparmio_stimato_eur: 55.00,
@@ -571,23 +575,27 @@
                 ]
             };
             
-            displayResult(dummyResult);
-            
-            // In un'applicazione reale, il codice sarebbe:
-            /*
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-            if (response.ok && data.status === 'success') {
-                displayResult(data.result);
+            // In un'applicazione reale, useresti:
+            // const data = await response.json();
+            // if (response.ok && data.status === 'success') {
+            //     displayResult(data.result);
+            // } else {
+            //     showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
+            // }
+
+            // *** SE HAI UN BACKEND VERO ATTIVO, DECOMMENTA IL BLOCCO SOPRA E CANCELLA QUESTO BLOCCO SIMULATO: ***
+            if (response.ok) {
+                // Se la risposta è OK, assumiamo che l'analisi sia andata a buon fine per la DEMO
+                displayResult(dummyResult); 
             } else {
-                showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l'analisi.'}`, 'error', false);
+                 const data = await response.json().catch(() => ({ message: `Errore generico ${response.status}` }));
+                 showStatus(`Errore ${response.status}: ${data.detail || data.message || 'Impossibile avviare l\'analisi.'}`, 'error', false);
             }
-            */
+            // ***************************************************************************************************
+
 
         } catch (error) {
+            // Questo errore è catturato se il server non risponde affatto (es. backend non attivo)
             showStatus(`Errore di rete: Controlla se il backend è attivo.`, 'error', false);
         }
     }
@@ -610,7 +618,6 @@
             reportDetailContent.style.display = 'none';
             chartsContainer.style.display = 'flex'; 
             
-            // Aggiungi un messaggio più realistico per i grafici se non ancora implementati
             if (!chartsContainer.dataset.initialized) {
                  chartsContainer.innerHTML = '<p style="font-size: 1.1em; font-weight: 600;">Area Grafici: Visualizzazioni analitiche in sviluppo. Tornare al Report Dettaglio.</p>';
                  chartsContainer.dataset.initialized = 'true';
@@ -634,7 +641,6 @@
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-             // Simulazione di un oggetto risultato per dimostrare il layout
              uploadFile(file);
         }
     });
@@ -644,6 +650,10 @@
     // Event listeners per i tab Report/Grafici
     reportTab.addEventListener('click', () => switchReportView('report'));
     chartsTab.addEventListener('click', () => switchReportView('charts'));
+
+    // Assicurati che all'avvio solo il contenitore del report sia visibile
+    reportDetailContent.style.display = 'block';
+    chartsContainer.style.display = 'none';
 
 </script>
 </html>
