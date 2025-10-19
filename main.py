@@ -7,38 +7,43 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates 
 from pydantic import BaseModel, Field
-from celery_config import celery_app
-from worker import analyze_pdf_task
+import google.generativeai as genai
+
+# Gestione dell'errore per compatibilità API SDK di Gemini
+try:
+    from google.generativeai.errors import APIError
+except ImportError:
+    try:
+        from google.generativeai import APIError
+    except ImportError:
+        class APIError(Exception):
+            pass
 
 # --- Configurazione e Inizializzazione ---
 app = FastAPI()
+# Assicurati che 'index.html' sia nella stessa cartella di main.py
 templates = Jinja2Templates(directory=".") 
 
 # --- DATI ESSENZIALI (URL REALI) ---
 WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'
 HOME_URL = 'https://luxailegal.wixsite.com/my-site-9'
 
-# --- SIMULAZIONE DATABASE (ACCESSO SEMPLIFICATO) ---
+# --- SIMULAZIONE DATABASE (Accesso non più richiesto per l'analisi) ---
 USERS_DB = {
-    # Mantenuti per l'iniezione HTML, ma il paywall non li userà più
     "user_wix_demo": {"is_logged_in": True, "is_paying_member": True, "email": "test-demo@lux-ai.com"}, 
     "ANONIMO": {"is_logged_in": False, "is_paying_member": False, "email": None},
 }
 
-# --- Modelli Pydantic per la Risposta (Invariati) ---
-class JobResponse(BaseModel):
-    job_id: str
-    status: str = "processing"
-    message: str = "Analisi avviata. Controllare lo stato tra qualche secondo."
-
+# --- Modelli Pydantic per la Risposta (Sincrona) ---
 class ResultResponse(BaseModel):
-    status: str = Field(..., description="Stato del job: success, processing, failed")
+    # Risponde direttamente con successo o fallimento
+    status: str = Field(..., description="Stato dell'analisi: success, failed")
     result: dict | None = None
     detail: str | None = None
 
 # --- UTILITY: Recupera l'Utente Corrente (SIMULAZIONE SSO) ---
 def get_current_user_id(request: Request) -> str:
-    # Simula che qualsiasi token valido garantisca l'accesso completo alla MVP
+    # Mantenuto per coerenza, ma non usato per il paywall in /analyze
     auth_token = request.cookies.get("auth_token") 
     
     if auth_token == "demo_token" or auth_token == "paid_token":
@@ -47,37 +52,118 @@ def get_current_user_id(request: Request) -> str:
     return "ANONIMO" 
 
 # ----------------------------------------------------------------------------------
-#                                 ROTTE (SEMPLIFICATE)
+# 🛑 LOGICA AI: COPIATA DAL VECCHIO WORKER (SINCRONA)
+# ----------------------------------------------------------------------------------
+
+# Funzione Helper per l'Inizializzazione Gemini
+def get_gemini_client():
+    api_key = os.getenv("GEMINI_API_KEY") 
+    if not api_key:
+        # Questo errore apparirà nei log di Render se la variabile manca
+        raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
+    return genai.Client(api_key=api_key)
+
+# Schema JSON per garantire l'output strutturato dall'AI
+OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "nome_documento": {"type": "string", "description": "Nome del file analizzato."},
+        "risparmio_stimato_eur": {"type": "number", "description": "Valore in EUR (es. 60.00)."},
+        "tempo_risparmiato_min": {"type": "integer", "description": "Tempo risparmiato in minuti (es. 15)."},
+        "riassunto_breve": {"type": "string", "description": "Breve riassunto dei rischi trovati (massimo 2 frasi)."},
+        "analisi_clausole": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tipo": {"type": "string"},
+                    "rischio": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "NON TROVATA"]},
+                    "testo_clausola_esatta": {"type": "string", "description": "La clausola esatta dal documento o stringa vuota se NON TROVATA."}
+                },
+                "required": ["tipo", "rischio", "testo_clausola_esatta"]
+            }
+        }
+    },
+    "required": ["nome_documento", "risparmio_stimato_eur", "tempo_risparmiato_min", "riassunto_breve", "analisi_clausole"]
+}
+
+# Funzione che esegue l'analisi AI
+async def run_gemini_analysis(temp_path: str, filename: str):
+    client = None
+    uploaded_file = None
+    output_text = ""
+    
+    try:
+        client = get_gemini_client()
+        
+        # 1. Carica il file su Gemini
+        uploaded_file = client.files.upload(file=temp_path)
+
+        # 2. Prompt focalizzato
+        prompt = f"""
+            Analizza il documento PDF fornito. Il tuo obiettivo è concentrarti SOLO su due aree critiche:
+            1. Clausole di Limitazione di Responsabilità (Liability Caps).
+            2. Clausole di Indennizzo (Indemnification).
+            Estrai i risultati in formato JSON. Per il ROI, assumi che l'avvocato medio risparmi 15 minuti di revisione per queste clausole.
+            Popola il campo "nome_documento" con "{filename}". Rispondi ESCLUSIVAMENTE con l'oggetto JSON richiesto.
+            """
+        
+        # 3. Generazione del Contenuto con Schema Enforced
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[prompt, uploaded_file],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": OUTPUT_SCHEMA
+            }
+        )
+
+        # 4. Decodifica e Pulizia (Il testo della risposta dovrebbe essere un JSON puro)
+        output_text = response.text.strip()
+        json_result = json.loads(output_text)
+
+        # 5. Pulizia del file da Gemini
+        client.files.delete(name=uploaded_file.name)
+        
+        return json_result
+
+    except APIError as e:
+        raise HTTPException(status_code=500, detail=f"Errore API Gemini: Verifica chiave/quota: {e}")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Errore di decodifica JSON dall'AI. L'output era malformato.")
+    except Exception as e:
+        # Pulizia in caso di errore generico
+        if uploaded_file and client:
+            try: client.files.delete(name=uploaded_file.name)
+            except: pass
+        raise HTTPException(status_code=500, detail=f"Errore Fatale durante l'analisi: {e}")
+    finally:
+        # Pulizia del file temporaneo locale (anche se in caso di successo lo facciamo prima)
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+# ----------------------------------------------------------------------------------
+#                                 ROTTE FASTAPI
 # ----------------------------------------------------------------------------------
 
 # --- ROTTA PRINCIPALE: SERVE L'HTML DINAMICO ---
 @app.get("/")
 async def read_index(request: Request):
-    user_id = get_current_user_id(request)
-    user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
-    
-    # Per l'MVP, forziamo il frontend a comportarsi come se l'utente fosse loggato,
-    # anche se non lo è (il JS ora lo forza a true)
+    # Forziamo a True per l'MVP accessibile (coerente con l'HTML)
     return templates.TemplateResponse(
         "index.html", 
         {
             "request": request,
-            "is_logged_in": "true", # Mantenuto per evitare errori di Jinja
-            "is_paying_member": "true", # Mantenuto per evitare errori di Jinja
+            "is_logged_in": "true", 
+            "is_paying_member": "true", 
         }
     )
 
-# --- ROTTA: Invia l'Analisi al Worker (Asincrono) ---
-@app.post("/analyze", response_model=JobResponse)
-async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
-    # 💥 CRITICITÀ RISOLTA: La verifica del login è stata rimossa per l'MVP accessibile.
-    user_id = get_current_user_id(request)
-    # user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
+# --- ROTTA: Esegue l'Analisi Sincrona ---
+@app.post("/analyze", response_model=ResultResponse)
+async def analyze_pdf_api(file: UploadFile = File(...)):
     
-    # 💥 RIMOSSO IL PAYWALL: if not user_data["is_logged_in"]:
-    # 💥 RIMOSSO IL PAYWALL:     raise HTTPException(status_code=403, detail="Accesso negato...")
-
-    # Il resto della logica di upload rimane invariato
+    # 1. Validazione del file
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Il file deve essere un PDF (application/pdf).")
     
@@ -86,51 +172,32 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
     file.file.seek(0)
     
     if file_size < 1000:
-        raise HTTPException(status_code=400, detail="Impossibile analizzare. Il file è troppo piccolo o vuoto. Si prega di caricare un PDF nativo.")
+        raise HTTPException(status_code=400, detail="Impossibile analizzare. Il file è troppo piccolo o vuoto.")
 
+    # 2. Salvataggio del file temporaneo
     temp_filename = f"{uuid.uuid4()}.pdf"
-    # Usiamo /tmp, la cartella temporanea accessibile su Render
     temp_path = os.path.join("/tmp", temp_filename) 
 
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     except Exception as e:
-        print(f"FATAL ERROR - Salvataggio File: {e}")
         raise HTTPException(status_code=500, detail="Errore I/O: Impossibile salvare il file temporaneo.")
     finally:
         file.file.close()
 
+    # 3. Esecuzione Sincrona dell'analisi AI
     try:
-        task = analyze_pdf_task.delay(temp_path, user_id) 
-        return JobResponse(job_id=task.id)
-    except Exception as e:
-        print(f"CELERY ERROR: Impossibile inviare il job. Dettaglio: {e}")
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        raise HTTPException(status_code=500, detail="Errore di servizio: Il sistema di elaborazione AI è inattivo.")
-
-
-# --- ROTTA: Controlla lo Stato del Job (Invariata) ---
-@app.get("/status/{job_id}", response_model=ResultResponse)
-async def get_job_status(job_id: str):
-    task = celery_app.AsyncResult(job_id)
-    
-    if task.state == 'PENDING' or task.state == 'STARTED':
-        return ResultResponse(status="processing", detail=task.info.get('message', 'Analisi in corso...'))
-    
-    elif task.state == 'SUCCESS':
-        result_data = task.result.get('result') 
-        temp_path = task.result.get('temp_path')
+        analysis_result = await run_gemini_analysis(temp_path, file.filename)
         
-        # Pulizia del file PDF temporaneo subito dopo il recupero del risultato
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-            
-        return ResultResponse(status="success", result=result_data, detail="Analisi completata con successo.")
-    
-    elif task.state == 'FAILURE':
-        return ResultResponse(status="failed", detail=f"Analisi fallita. Dettaglio: {task.info}")
+        # 4. Restituiamo il risultato finale in formato ResultResponse
+        return ResultResponse(status="success", result=analysis_result, detail="Analisi completata con successo.")
+        
+    except HTTPException:
+        # Rilancia le eccezioni HTTP che abbiamo creato in run_gemini_analysis
+        raise
+    except Exception as e:
+        # Gestisce qualsiasi altro errore (dovrebbe essere gestito in run_gemini_analysis, ma per sicurezza)
+        raise HTTPException(status_code=500, detail=f"Errore di servizio FATALE: {e}")
 
-    else:
-        return ResultResponse(status="processing", detail="Elaborazione in corso.")
+# 🛑 Rotta /status/{job_id} RIMOSSA - Non più necessaria nel modello sincrono.
