@@ -3,9 +3,9 @@ import json
 import google.generativeai as genai
 import time 
 from celery_config import celery_app
-# 🛑 CORREZIONE ULTIMA CHANCE: Importa la classe APIError direttamente dal modulo 'genai'
-# Se questo non funziona, il problema è solo la versione Python 3.13
-from google.generativeai import APIError # <- MODIFICA QUI!
+# 🛑 CORREZIONE ULTIMA CHANCE: Importa la classe APIError dal sottomodulo 'errors'
+# La libreria Google Generative AI la sposta qui nelle versioni recenti.
+from google.generativeai.errors import APIError 
 
 # --- Funzione Helper per l'Inizializzazione Gemini ---
 def get_gemini_client():
