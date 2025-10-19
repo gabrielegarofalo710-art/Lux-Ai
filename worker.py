@@ -3,9 +3,19 @@ import json
 import google.generativeai as genai
 import time 
 from celery_config import celery_app
-# 🛑 CORREZIONE ULTIMA CHANCE: Importa la classe APIError dal sottomodulo 'errors'
-# La libreria Google Generative AI la sposta qui nelle versioni recenti.
-from google.generativeai.errors import APIError 
+
+# 🛑 CORREZIONE FINALE: Gestione degli import per compatibilità tra le versioni SDK
+# Prova prima l'import moderno (da .errors). Se fallisce, prova l'import legacy.
+try:
+    from google.generativeai.errors import APIError
+except ImportError:
+    # Se il sottomodulo 'errors' non esiste (SDK datata), prova l'import diretto
+    try:
+        from google.generativeai import APIError
+    except ImportError:
+        # Fallback nel caso in cui la classe non sia esposta in nessuno dei due modi
+        class APIError(Exception):
+            pass
 
 # --- Funzione Helper per l'Inizializzazione Gemini ---
 def get_gemini_client():
