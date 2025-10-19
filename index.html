@@ -79,6 +79,7 @@
         .HIGH { border-color: var(--danger-color); background-color: #fae6e6; color: var(--danger-color); }
         .MEDIUM { border-color: var(--warning-color); background-color: #fff4d2; color: #c08500; }
         .LOW { border-color: #28a745; background-color: #e6f7e6; color: #28a745; }
+        .NON-TROVATA { border-color: #999; background-color: #eee; color: #555; }
         #statusFeedback {
             margin-top: 25px; padding: 15px; border-radius: var(--border-radius);
             font-weight: 600; text-align: center; display: none;
@@ -93,6 +94,16 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .trust-section { display: none; } 
+
+        /* NUOVO STILE per la sezione Suggerimenti */
+        .ai-suggestion-box {
+            padding: 15px;
+            border: 1px dashed var(--brand-color);
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+            background-color: #e9f5ff; /* Sfondo molto chiaro */
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -134,19 +145,16 @@
                 <div class="results-box">
                     <div class="kpi-title">ROI & Efficienza</div>
                     <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Risparmio Economico Stimato:</p>
-                    <div class="kpi-metric" id="roiMetric">€400+</div>
-                    
-                    <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
-                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">4+ Ore</p>
-                </div>
+                    <div class="kpi-metric" id="roiMetric">€45.00</div> <p style="font-size: 0.95em; color: var(--text-light); margin: 0;">Tempo Analisi Risparmiato:</p>
+                    <p style="font-size: 1.3em; font-weight: 700; color: var(--brand-color);" id="timeMetric">12 Minuti</p> </div>
                 
                 <div class="results-box">
                     <div class="kpi-title">Stato Analisi</div>
                     <ul class="kpi-list" id="summaryList">
                         <li>• Focus Clausole Critiche: Liability & Indemnification</li>
-                        <li>• Clausole Controllate: 12+</li>
+                        <li>• Clausole Controllate: 2 (MVP)</li>
                         <li>• Rischio Complessivo: **Medio**</li>
-                    </ul>
+                        <li id="riskScoreItem">Indice di Rischio: N/D / 100</li> <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li> </ul>
                 </div>
             </div>
 
@@ -183,6 +191,9 @@
     const summaryList = document.getElementById('summaryList');
     const reportDetail = document.getElementById('reportDetail');
 
+    const riskScoreItem = document.getElementById('riskScoreItem'); // Nuovo
+    const riskMotivationItem = document.getElementById('riskMotivationItem'); // Nuovo
+
     analyzeButton.textContent = 'Carica il tuo file';
 
 
@@ -202,57 +213,89 @@
             spinner.style.display = 'none';
         }
         
-        // Reset risultati statici
+        // Reset risultati statici (Punto 4)
         if (type !== 'success') {
-            roiMetric.textContent = '€400+'; 
-            timeMetric.textContent = '4+ Ore'; 
+            roiMetric.textContent = '€45.00'; 
+            timeMetric.textContent = '12 Minuti'; 
             summaryList.innerHTML = `
                 <li>• Focus Clausole Critiche: Liability & Indemnification</li>
                 <li>• Clausole Controllate: 2 (MVP)</li>
                 <li>• Rischio Complessivo: **Medio**</li>
+                <li id="riskScoreItem">Indice di Rischio: N/D / 100</li>
+                <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: Carica un file per l'analisi.</li>
               `;
+            // Ricollega i riferimenti dopo l'innerHTML
+            // Questo è un modo per gestire i riferimenti DOM quando si riscrive l'HTML interno.
+            document.getElementById('riskScoreItem').textContent = 'Indice di Rischio: N/D / 100';
+            document.getElementById('riskMotivationItem').innerHTML = 'Motivazione: Carica un file per l\'analisi.';
+
             reportDetail.innerHTML = `<p style="font-size: 0.95em; color: var(--text-light); font-style: italic;">Carica un documento per visualizzare il report analitico su tutte le clausole critiche.</p>`;
         }
     }
 
     function displayResult(result) {
-        // Estrai i NUOVI campi
         const { 
             nome_documento, 
             risparmio_stimato_eur, 
             tempo_risparmiato_min, 
             analisi_clausole, 
             riassunto_breve,
-            tempo_lettura_avvocato_stimato_min, // NUOVO
-            rischio_complessivo_percentuale    // NUOVO
+            tempo_lettura_avvocato_stimato_min,
+            rischio_complessivo_percentuale,
+            motivazione_rischio_complessivo, // NUOVO
+            suggerimenti_ai                  // NUOVO
         } = result;
-        
-        // KPI Column
+
+        // --- COLONNA KPI ---
+        // ROI (Punto 4)
         roiMetric.textContent = `€${risparmio_stimato_eur.toFixed(2)}`;
-        // Ora mostriamo il tempo risparmiato e il tempo totale stimato per l'avvocato
+        // Tempo Risparmiato (Punto 4)
         timeMetric.innerHTML = `
             ${tempo_risparmiato_min} Minuti 
-            <span style="font-size: 0.7em; color: var(--text-light); display: block;">(Stimato: ${tempo_lettura_avvocato_stimato_min} min)</span>
+            <span style="font-size: 0.7em; color: var(--text-light); display: block;">(Stimato Avv.: ${tempo_lettura_avvocato_stimato_min} min)</span>
         `;
 
-        // Modificato per mostrare la percentuale di rischio
+        // Riepilogo Rischio (Punto 1 & 2)
+        let riskSummaryText = 'BASSO';
+        if (rischio_complessivo_percentuale >= 67) riskSummaryText = 'ALTO';
+        else if (rischio_complessivo_percentuale >= 34) riskSummaryText = 'MEDIO';
+        
         summaryList.innerHTML = `
             <li>• Documento: ${nome_documento.substring(0, 30)}...</li>
             <li>• Clausole Controllate: ${analisi_clausole.length}</li>
-            <li>• Rischio Complessivo: **${rischio_complessivo_percentuale}%**</li>
+            <li>• Rischio Complessivo: **${riskSummaryText}**</li>
+            <li id="riskScoreItem">Indice di Rischio: ${rischio_complessivo_percentuale} / 100</li>
+            <li id="riskMotivationItem" style="font-size: 0.85em; color: var(--text-light);">Motivazione: ${motivazione_rischio_complessivo}</li>
         `;
 
-        // Report Detail Column (invariato)
-        reportDetail.innerHTML = `
+        // --- COLONNA REPORT DETTAGLIO ---
+        // Dettaglio Clausole (Invariato)
+        let detailHtml = `
             <p class="kpi-title" style="margin-top: 0;">Report Dettaglio Rischi</p>
             ${analisi_clausole.map(clausola => `
-                <div class="clausola-box ${clausola.rischio}">
+                <div class="clausola-box ${clausola.rischio.replace(' ', '-')}">
                     <strong>${clausola.tipo} (${clausola.rischio})</strong><br>
                     ${clausola.rischio === 'NON TROVATA' ? 'Clausola non trovata nel documento.' : clausola.testo_clausola_esatta.substring(0, 100) + '...'}
                 </div>
             `).join('')}
-            <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">${riassunto_breve}</p>
         `;
+        
+        // Sintesi Finale e Suggerimenti AI (Punto 3 & 5)
+        detailHtml += `
+            <div class="ai-suggestion-box">
+                <p class="kpi-title" style="margin-top: 0; color: var(--text-dark);">Sintesi Finale & Suggerimenti AI</p>
+                <p style="font-size: 0.9em; margin-bottom: 5px;">
+                    Il documento presenta un livello di rischio complessivo **${riskSummaryText} (${rischio_complessivo_percentuale}/100)**.
+                </p>
+                <p style="font-size: 0.9em; font-weight: 600; color: var(--brand-color); margin-top: 10px; margin-bottom: 5px;">
+                    Azioni Consigliate:
+                </p>
+                <p style="font-size: 0.9em; margin-top: 0;">${suggerimenti_ai}</p>
+                <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">Riassunto: ${riassunto_breve}</p>
+            </div>
+        `;
+
+        reportDetail.innerHTML = detailHtml;
 
         showStatus(`Analisi completata con successo! ${nome_documento}`, 'success', false);
     }
