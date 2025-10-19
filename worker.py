@@ -3,27 +3,47 @@ import json
 import google.generativeai as genai
 import time 
 from celery_config import celery_app
+from google.generativeai.errors import APIError
 
 # --- Funzione Helper per l'Inizializzazione Gemini ---
-# Legge la chiave dall'ambiente (che Render inietterà)
 def get_gemini_client():
-    # Usiamo GEMINI_API_KEY come variabile d'ambiente standard
+    # Legge la chiave dall'ambiente (che Render inietterà)
     api_key = os.getenv("GEMINI_API_KEY") 
     
-    # Se la chiave non è stata trovata, solleviamo un errore che bloccherà il worker
     if not api_key:
         raise ValueError("GEMINI_API_KEY non trovata. Impossibile configurare l'AI.")
     
-    # Inizializzazione della configurazione Gemini
-    genai.configure(api_key=api_key)
-    return genai.client.Client()
+    # Non è più necessario chiamare genai.configure se usi genai.Client(api_key=...)
+    return genai.Client(api_key=api_key)
+
+# --- Definizione dello Schema JSON per l'Output (Cruciale per la dinamicità) ---
+# Questo garantisce che Gemini restituisca un formato JSON che il tuo frontend può leggere.
+OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "nome_documento": {"type": "string", "description": "Nome del file analizzato."},
+        "risparmio_stimato_eur": {"type": "number", "description": "Valore in EUR (es. 60.00)."},
+        "tempo_risparmiato_min": {"type": "integer", "description": "Tempo risparmiato in minuti (es. 15)."},
+        "riassunto_breve": {"type": "string", "description": "Breve riassunto dei rischi trovati (massimo 2 frasi)."},
+        "analisi_clausole": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tipo": {"type": "string"},
+                    "rischio": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "NON TROVATA"]},
+                    "testo_clausola_esatta": {"type": "string", "description": "La clausola esatta dal documento o stringa vuota se NON TROVATA."}
+                },
+                "required": ["tipo", "rischio", "testo_clausola_esatta"]
+            }
+        }
+    },
+    "required": ["nome_documento", "risparmio_stimato_eur", "tempo_risparmiato_min", "riassunto_breve", "analisi_clausole"]
+}
 
 # --- TASK CELERY: Analisi PDF ---
 @celery_app.task(bind=True)
 def analyze_pdf_task(self, temp_path: str, user_id: str):
-    """
-    Esegue l'analisi PDF pesante in background, carica il file su Gemini e pulisce.
-    """
     client = None
     uploaded_file = None
     
@@ -31,69 +51,68 @@ def analyze_pdf_task(self, temp_path: str, user_id: str):
         # 1. Ottieni il Client AI
         client = get_gemini_client()
 
-        # 2. Carica il file su Gemini
-        self.update_state(state='STARTED', meta={'progress': 20, 'message': 'Caricamento file AI...'})
+        # 2. Carica il file su Gemini (Passando il path corretto da /tmp)
+        self.update_state(state='STARTED', meta={'progress': 20, 'message': 'Caricamento file AI su Gemini...'})
         
-        # Caricamento effettivo del file su Google AI
+        # Questa è la funzione che legge il file locale e lo invia a Google AI
         uploaded_file = client.files.upload(file=temp_path)
 
-        # 3. Prompt focalizzato sul ROI e Rischio (MVP: solo 2 clausole)
-        prompt = """
-            Analizza questo documento PDF concentrandoti SOLO su due aree critiche ad alto rischio e alta frequenza:
+        # 3. Prompt focalizzato
+        prompt = f"""
+            Analizza il documento PDF fornito. Il tuo obiettivo è concentrarti SOLO su due aree critiche:
             1. Clausole di Limitazione di Responsabilità (Liability Caps).
             2. Clausole di Indennizzo (Indemnification).
 
             Estrai i risultati in formato JSON. Per il ROI, assumi che l'avvocato medio risparmi 15 minuti di revisione per queste clausole.
             
-            Rispondi SOLO con il blocco di codice JSON con la seguente struttura. Se una clausola non è trovata, usa "NON TROVATA" per il rischio e "" per il testo.
-            {
-                "nome_documento": "...",
-                "risparmio_stimato_eur": 60.00, 
-                "tempo_risparmiato_min": 15,
-                "analisi_clausole": [
-                    {
-                        "tipo": "Limitazione di Responsabilità",
-                        "rischio": "HIGH" | "MEDIUM" | "LOW" | "NON TROVATA",
-                        "testo_clausola_esatta": "..." 
-                    },
-                    {
-                        "tipo": "Indennizzo",
-                        "rischio": "HIGH" | "MEDIUM" | "LOW" | "NON TROVATA",
-                        "testo_clausola_esatta": "..." 
-                    }
-                ],
-                "riassunto_breve": "Breve riassunto dei rischi trovati (massimo 2 frasi)."
-            }
+            Popola il campo "nome_documento" con "{os.path.basename(temp_path)}". Rispondi ESCLUSIVAMENTE con l'oggetto JSON richiesto.
             """
         
-        # 4. Generazione del Contenuto
-        self.update_state(state='STARTED', meta={'progress': 50, 'message': 'Analisi AI in corso...'})
+        # 4. Generazione del Contenuto con Schema Enforced
+        self.update_state(state='STARTED', meta={'progress': 50, 'message': 'Analisi AI in corso... (Gemini 2.5 Flash)'})
+        
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[prompt, uploaded_file]
+            contents=[prompt, uploaded_file],
+            config={
+                # PARAMETRI CRUCIALI PER L'OUTPUT JSON PERFETTO:
+                "response_mime_type": "application/json",
+                "response_schema": OUTPUT_SCHEMA
+            }
         )
 
+        # 5. Decodifica e Pulizia (Il testo della risposta dovrebbe essere un JSON puro)
         output_text = response.text.strip()
-        if output_text.startswith("```json"):
-            output_text = output_text.replace("```json", "").replace("```", "").strip()
-
-        # 5. Tentativo di Decodifica e Restituzione
         json_result = json.loads(output_text)
 
-        # Restituisce il risultato e il path del file locale (per la pulizia in main.py)
-        return {"result": json_result, "temp_path": temp_path}
+        # 6. Pulizia del file da Gemini in caso di SUCCESSO (CRITICO!)
+        client.files.delete(name=uploaded_file.name)
 
-    except Exception as e:
-        print(f"WORKER FATAL ERROR: {e}")
-        # Pulisci subito il file Gemini in caso di fallimento
+        # 7. Restituisce il risultato
+        return {"result": json_result, "temp_path": temp_path, "status": "SUCCESS"}
+
+    except APIError as e:
+        error_msg = f"Errore API Gemini (chiave/file): {e}"
+        # Gestione della pulizia in caso di fallimento
         if uploaded_file and client:
-             # Assicurati che l'oggetto client sia valido prima di chiamare delete
-             try:
-                 client.files.delete(name=uploaded_file.name)
-             except Exception as cleanup_e:
-                 print(f"Cleanup Error on Gemini: {cleanup_e}")
-
-        # Rilancia l'errore per segnalare il fallimento a Celery
-        raise e
-    
-    # Pulizia locale del file PDF è gestita nella rotta /status del main.py
+            try:
+                client.files.delete(name=uploaded_file.name)
+            except: pass
+        raise self.raise_for_status(error_msg, status='FAILURE')
+        
+    except json.JSONDecodeError as e:
+        error_msg = f"Errore di decodifica JSON dall'AI. L'output AI non era JSON valido: {output_text[:100]}..."
+        if uploaded_file and client:
+            try:
+                client.files.delete(name=uploaded_file.name)
+            except: pass
+        raise self.raise_for_status(error_msg, status='FAILURE')
+        
+    except Exception as e:
+        error_msg = f"WORKER FATAL ERROR: {e}"
+        # Pulizia in caso di qualsiasi altro errore
+        if uploaded_file and client:
+            try:
+                client.files.delete(name=uploaded_file.name)
+            except: pass
+        raise self.raise_for_status(error_msg, status='FAILURE')
