@@ -2,35 +2,31 @@ import os
 import shutil
 import tempfile
 import uuid
-import json 
+import json
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request 
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates 
 from pydantic import BaseModel, Field
+# Nota: Questi import implicano che devi avere un file celery_config.py funzionante.
 from celery_config import celery_app
 from worker import analyze_pdf_task
 
 # --- Configurazione e Inizializzazione ---
 app = FastAPI()
-templates = Jinja2Templates(directory=".") # Imposta la directory del template (la root del progetto)
+templates = Jinja2Templates(directory=".") 
 
 # --- DATI ESSENZIALI (URL REALI) ---
-STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/test_00w5kDdh648i2GUgHMbQY00'
 WIX_LOGIN_URL = 'https://luxailegal.wixsite.com/my-site-9'
 HOME_URL = 'https://luxailegal.wixsite.com/my-site-9'
-# Chiave segreta per verificare i Webhook di Stripe (CRITICA PER LA SICUREZZA!)
-STRIPE_WEBHOOK_SECRET = "whsec_..." # ⚠️ SOSTITUISCI CON LA TUA VERA CHIAVE SEGRETA!
 
-# --- SIMULAZIONE DATABASE (SOSTITUIRE CON DB REALE) ---
+# --- SIMULAZIONE DATABASE (ACCESSO SEMPLIFICATO) ---
 USERS_DB = {
-    "user_wix_demo": {"is_logged_in": True, "is_paying_member": False, "email": "test-demo@lux-ai.com"}, 
-    "user_wix_paid": {"is_logged_in": True, "is_paying_member": True, "email": "paid-user@lux-ai.com"},
+    # Tutti gli utenti loggati sono ora considerati "paganti" (accesso completo)
+    "user_wix_demo": {"is_logged_in": True, "is_paying_member": True, "email": "test-demo@lux-ai.com"}, 
     "ANONIMO": {"is_logged_in": False, "is_paying_member": False, "email": None},
 }
-# La mappa email: ID è cruciale per il Webhook
-EMAIL_TO_ID = {data['email']: user_id for user_id, data in USERS_DB.items() if data['email']}
 
-# --- Modelli Pydantic per la Risposta ---
+# --- Modelli Pydantic per la Risposta (Invariati) ---
 class JobResponse(BaseModel):
     job_id: str
     status: str = "processing"
@@ -41,24 +37,18 @@ class ResultResponse(BaseModel):
     result: dict | None = None
     detail: str | None = None
 
-class StripeEvent(BaseModel):
-    type: str
-    data: dict
-    id: str
-
 # --- UTILITY: Recupera l'Utente Corrente (SIMULAZIONE SSO) ---
 def get_current_user_id(request: Request) -> str:
+    # Simula che qualsiasi token valido garantisca l'accesso completo alla MVP
     auth_token = request.cookies.get("auth_token") 
     
-    if auth_token == "paid_token":
-        return "user_wix_paid"
-    if auth_token == "demo_token":
+    if auth_token == "demo_token" or auth_token == "paid_token":
         return "user_wix_demo"
     
     return "ANONIMO" 
 
 # ----------------------------------------------------------------------------------
-#                                 LE NUOVE ROTTE CRITICHE
+#                                 ROTTE (SEMPLIFICATE)
 # ----------------------------------------------------------------------------------
 
 # --- ROTTA PRINCIPALE: SERVE L'HTML DINAMICO ---
@@ -66,7 +56,8 @@ def get_current_user_id(request: Request) -> str:
 async def read_index(request: Request):
     user_id = get_current_user_id(request)
     user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
-
+    
+    # Ora is_paying_member è True se l'utente è loggato.
     return templates.TemplateResponse(
         "index.html", 
         {
@@ -76,48 +67,18 @@ async def read_index(request: Request):
         }
     )
 
-# --- 2. ROTTA CHIRURGICA: WEBHOOK STRIPE (SBLOCCO AUTOMATICO) ---
-@app.post("/stripe-webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get('stripe-signature')
-    event = None
-    
-    try:
-        # Nota: La vera verifica di sicurezza di Stripe è disabilitata per il test MVP.
-        event = json.loads(payload)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        customer_email = session.get('customer_details', {}).get('email')
-        
-        if customer_email:
-            user_id = EMAIL_TO_ID.get(customer_email)
-            if user_id and user_id in USERS_DB:
-                USERS_DB[user_id]["is_paying_member"] = True
-                print(f"✅ SBLOCCO AVVENUTO: L'utente {user_id} ({customer_email}) è ora MEMBRO PAGANTE.")
-            else:
-                 print(f"ATTENZIONE: Pagamento ricevuto per email sconosciuta: {customer_email}")
-
-    return {"status": "success"}
-
-
-# ----------------------------------------------------------------------------------
-#                                 LE TUE VECCHIE ROTTE (MODIFICATE)
-# ----------------------------------------------------------------------------------
-
-# --- 1. ROTTA: Invia l'Analisi al Worker (Asincrono) ---
+# --- ROTTA: Invia l'Analisi al Worker (Asincrono) ---
 @app.post("/analyze", response_model=JobResponse)
 async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
-    # ⚠️ PAYWALL DI SICUREZZA LATO SERVER
+    # PAYWALL DI SICUREZZA LATO SERVER (Ora solo Login richiesto)
     user_id = get_current_user_id(request)
     user_data = USERS_DB.get(user_id, USERS_DB["ANONIMO"])
     
-    if not user_data["is_paying_member"]:
-        raise HTTPException(status_code=403, detail="Accesso negato. Solo i membri del Pilot Programma possono avviare l'analisi.")
+    # Se l'utente NON è loggato, l'accesso è negato.
+    if not user_data["is_logged_in"]:
+        raise HTTPException(status_code=403, detail="Accesso negato. Solo gli utenti loggati possono avviare l'analisi.")
 
+    # Il resto della logica di upload rimane invariato
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Il file deve essere un PDF (application/pdf).")
     
@@ -129,6 +90,7 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Impossibile analizzare. Il file è troppo piccolo o vuoto. Si prega di caricare un PDF nativo.")
 
     temp_filename = f"{uuid.uuid4()}.pdf"
+    # Usiamo /tmp, la cartella temporanea accessibile su Render
     temp_path = os.path.join("/tmp", temp_filename) 
 
     try:
@@ -150,7 +112,7 @@ async def analyze_pdf_api(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Errore di servizio: Il sistema di elaborazione AI è inattivo.")
 
 
-# --- 2. ROTTA: Controlla lo Stato del Job ---
+# --- ROTTA: Controlla lo Stato del Job (Invariata) ---
 @app.get("/status/{job_id}", response_model=ResultResponse)
 async def get_job_status(job_id: str):
     task = celery_app.AsyncResult(job_id)
